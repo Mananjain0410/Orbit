@@ -1,0 +1,49 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Admin checking function
+    function isAdmin() {
+      // In a real app, you would verify the user's role here
+      // return request.auth != null && request.auth.token.role == 'admin';
+      return true; // Mock for now
+    }
+    
+    // Retailer checking function
+    function isRetailer(userId) {
+      // return request.auth != null && request.auth.uid == userId;
+      return true; // Mock for now
+    }
+
+    // Orders Collection
+    match /orders/{orderId} {
+      // Retailers can read their own orders and create new ones
+      allow read, create: if isAdmin() || (request.resource.data.retailerId == request.auth.uid);
+      // Only admins can update or delete
+      allow update, delete: if isAdmin();
+    }
+
+    // Notifications Collection
+    match /notifications/{notificationId} {
+      // Users can read and update their own notifications
+      allow read, update: if isAdmin() || resource.data.userId == request.auth.uid;
+      // Admins can create notifications
+      allow create, delete: if isAdmin();
+    }
+
+    // Settings Collection
+    match /system/{document} {
+      // Anyone can read settings (for homepage, footer, etc.)
+      allow read: if true;
+      // Only admins can update settings
+      allow write: if isAdmin();
+    }
+    
+    // Retailers Collection
+    match /retailers/{userId} {
+      allow read: if isAdmin() || isRetailer(userId);
+      allow write: if isAdmin() || isRetailer(userId);
+    }
+  }
+}
