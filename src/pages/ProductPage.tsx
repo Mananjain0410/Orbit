@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router';
-import { dummyProducts, dummyCategories } from '../lib/dummyData';
+import { useStore } from '../contexts/StoreContext';
 import { Button } from '../components/ui/Button';
 import { ShoppingCart, Heart, Share2, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
@@ -11,8 +11,9 @@ import { SEO } from '../components/SEO';
 
 export function ProductPage() {
   const { id } = useParams();
-  const product = dummyProducts.find(p => p.id === id);
-  const category = dummyCategories.find(c => c.id === product?.categoryId);
+  const { products, categories } = useStore();
+  const product = products.find(p => p.id === id);
+  const category = categories.find(c => c.id === product?.categoryId);
   
   const { addToCart } = useCart();
   const { isFavorite, addFavorite, removeFavorite } = useFavorites();

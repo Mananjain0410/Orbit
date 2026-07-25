@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useParams } from 'react-router';
 import { ProductGrid } from '../components/product/ProductGrid';
-import { dummyProducts, dummyCategories } from '../lib/dummyData';
+import { useStore } from '../contexts/StoreContext';
 import { Button } from '../components/ui/Button';
 import { SlidersHorizontal, X } from 'lucide-react';
 import { SEO } from '../components/SEO';
@@ -9,9 +9,10 @@ import { SEO } from '../components/SEO';
 export function CategoryPage() {
   const { slug } = useParams();
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const { products: allProducts, categories } = useStore();
   
-  const category = dummyCategories.find(c => c.slug === slug);
-  const products = dummyProducts.filter(p => p.categoryId === category?.id);
+  const category = categories.find(c => c.slug === slug);
+  const products = allProducts.filter(p => p.categoryId === category?.id);
 
   if (!category) {
     return (

@@ -1,7 +1,7 @@
 import { Skeleton } from '../../components/ui/Skeleton';
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router';
-import { dummyProducts, dummyCategories } from '../../lib/dummyData';
+import { useAdminData } from '../../contexts/AdminDataContext';
 import { Search, Filter, Edit2, Check } from 'lucide-react';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
@@ -14,17 +14,10 @@ export function AdminInventory() {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState(initialStatus);
-  const [isLoading, setIsLoading] = useState(true);
+  const isLoading = products.length === 0;
   
-  const [products, setProducts] = useState<Product[]>([]);
+  const { products, categories, updateProduct } = useAdminData();
   
-  React.useEffect(() => {
-    // Simulate loading data
-    setTimeout(() => {
-      setProducts(dummyProducts);
-      setIsLoading(false);
-    }, 800);
-  }, []);
   const [editingStock, setEditingStock] = useState<{ productId: string, colorName: string } | null>(null);
   const [editValue, setEditValue] = useState<string>('');
   
@@ -72,15 +65,12 @@ export function AdminInventory() {
   const saveStock = (productId: string, colorName: string) => {
     const newStock = parseInt(editValue, 10);
     if (!isNaN(newStock) && newStock >= 0) {
-      setProducts(prev => prev.map(p => {
-        if (p.id === productId) {
-          return {
-            ...p,
-            colors: p.colors.map(c => c.name === colorName ? { ...c, stock: newStock } : c)
-          };
-        }
-        return p;
-      }));
+      const p = products.find(prod => prod.id === productId);
+      if (p) {
+        updateProduct(productId, {
+          colors: p.colors.map(c => c.name === colorName ? { ...c, stock: newStock } : c)
+        });
+      }
     }
     setEditingStock(null);
   };
@@ -117,7 +107,7 @@ export function AdminInventory() {
             onChange={(e) => setCategoryFilter(e.target.value)}
           >
             <option value="all">All Categories</option>
-            {dummyCategories.map(c => (
+            {categories.map(c => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
@@ -160,7 +150,7 @@ export function AdminInventory() {
                   </tr>
                 ))
               ) : inventoryItems.map((item, idx) => {
-                const cat = dummyCategories.find(c => c.id === item.categoryId);
+                const cat = categories.find(c => c.id === item.categoryId);
                 const isEditing = editingStock?.productId === item.productId && editingStock?.colorName === item.colorName;
                 return (
                   <tr key={`${item.productId}-${item.colorName}-${idx}`} className="hover:bg-muted/30 transition-colors">

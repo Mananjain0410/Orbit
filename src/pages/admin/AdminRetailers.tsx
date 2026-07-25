@@ -1,10 +1,10 @@
 import { Skeleton } from '../../components/ui/Skeleton';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { dummyRetailers } from '../../lib/dummyData';
 import { Search, MoreHorizontal, UserCheck, UserX, UserMinus } from 'lucide-react';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
+import { retailerService, RetailerProfile } from '../../services/retailerService';
 
 export function AdminRetailers() {
   const navigate = useNavigate();
@@ -12,13 +12,23 @@ export function AdminRetailers() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
   
-  const [retailersList, setRetailersList] = useState<typeof dummyRetailers>([]);
+  const [retailersList, setRetailersList] = useState<RetailerProfile[]>([]);
+  const [error, setError] = useState<string | null>(null);
   
-  React.useEffect(() => {
-    setTimeout(() => {
-      setRetailersList(dummyRetailers);
-      setIsLoading(false);
-    }, 800);
+  useEffect(() => {
+    const fetchRetailers = async () => {
+      try {
+        setIsLoading(true);
+        const data = await retailerService.getAllRetailers();
+        setRetailersList(data);
+      } catch (err) {
+        setError('Failed to load retailers. Please try again later.');
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchRetailers();
   }, []);
   
   const retailers = retailersList.filter(r => {

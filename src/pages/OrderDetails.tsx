@@ -9,7 +9,7 @@ import { SEO } from '../components/SEO';
 import { Spinner } from '../components/ui/Spinner';
 import { useCart } from '../contexts/CartContext';
 import { useToast } from '../components/ui/Toast';
-import { dummyProducts } from '../lib/dummyData';
+import { useStore } from '../contexts/StoreContext';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { useRetailer } from '../contexts/RetailerAuthContext';
@@ -23,6 +23,7 @@ export function OrderDetails() {
   
   const { clearCart, addToCart } = useCart();
   const navigate = useNavigate();
+  const { products } = useStore();
   const { showToast } = useToast();
   const { retailer } = useRetailer();
 
@@ -50,7 +51,7 @@ export function OrderDetails() {
     });
 
     productMap.forEach((items, productId) => {
-      const product = dummyProducts.find(p => p.id === productId);
+      const product = products.find(p => p.id === productId);
       
       if (!product || !product.inStock) {
         unavailableCount++;

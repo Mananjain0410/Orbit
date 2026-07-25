@@ -3,11 +3,11 @@ import { Search, ShoppingCart, User, Menu, X, ArrowRight } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { dummyCategories, dummyProducts } from '../../lib/dummyData';
 import { motion, AnimatePresence } from 'motion/react';
 import { useCart } from '../../contexts/CartContext';
 import { useRetailer } from '../../contexts/RetailerAuthContext';
 import { NotificationBell } from '../notifications/NotificationBell';
+import { useStore } from '../../contexts/StoreContext';
 
 export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -18,6 +18,7 @@ export function Header() {
   const navigate = useNavigate();
   const { totalSets } = useCart();
   const { retailer } = useRetailer();
+  const { products, categories } = useStore();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -37,7 +38,7 @@ export function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const searchResults = searchQuery.trim() === '' ? [] : dummyProducts.filter(product => {
+  const searchResults = searchQuery.trim() === '' ? [] : products.filter(product => {
     const query = searchQuery.toLowerCase();
     return (
       product.patternNumber.toLowerCase().includes(query) ||
@@ -75,7 +76,7 @@ export function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex flex-1 items-center justify-center space-x-8 text-[12px] font-medium uppercase tracking-[1px]">
-            {dummyCategories.map((cat) => (
+            {categories.map((cat) => (
               <Link 
                 key={cat.id} 
                 to={`/category/${cat.slug}`} 
@@ -237,7 +238,7 @@ export function Header() {
               
               <nav className="flex flex-col space-y-6 flex-1">
                 <span className="text-[10px] uppercase tracking-[3px] text-muted-foreground">Catalog</span>
-                {dummyCategories.map((cat) => (
+                {categories.map((cat) => (
                   <Link 
                     key={cat.id} 
                     to={`/category/${cat.slug}`} 

@@ -1,54 +1,57 @@
-import React, { createContext, useContext, useState } from 'react';
-
-interface RetailerProfile {
-  uid: string;
-  ownerName: string;
-  firmName: string;
-  phone: string;
-  gst: string;
-  city: string;
-  state: string;
-}
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { auth } from '../firebase/config';
+import { retailerService, RetailerProfile } from '../services/retailerService';
 
 interface RetailerAuthContextType {
   retailer: RetailerProfile | null;
-  login: () => void;
-  logout: () => void;
+  loading: boolean;
+  login: (profile: RetailerProfile) => void;
+  logout: () => Promise<void>;
+  checkRetailerProfile: (phone: string) => Promise<RetailerProfile | null>;
 }
 
 const RetailerAuthContext = createContext<RetailerAuthContextType | undefined>(undefined);
 
 export function RetailerAuthProvider({ children }: { children: React.ReactNode }) {
-  // Mock login state for now
-  const [retailer, setRetailer] = useState<RetailerProfile | null>({
-    uid: "dummy_retailer_123",
-    ownerName: "Rahul Sharma",
-    firmName: "Sharma Textiles & Garments",
-    phone: "+91 98765 43210",
-    gst: "22AAAAA0000A1Z5",
-    city: "New Delhi",
-    state: "Delhi"
-  });
+  const [retailer, setRetailer] = useState<RetailerProfile | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const login = () => {
-    setRetailer({
-      uid: "dummy_retailer_123",
-      ownerName: "Rahul Sharma",
-      firmName: "Sharma Textiles & Garments",
-      phone: "+91 98765 43210",
-      gst: "22AAAAA0000A1Z5",
-      city: "New Delhi",
-      state: "Delhi"
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user: User | null) => {
+      if (user && user.phoneNumber) {
+        try {
+          const profile = await retailerService.getRetailerByPhone(user.phoneNumber);
+          setRetailer(profile);
+        } catch (error) {
+          console.error("Error fetching retailer profile on auth change:", error);
+          setRetailer(null);
+        }
+      } else {
+        setRetailer(null);
+      }
+      setLoading(false);
     });
+
+    return () => unsubscribe();
+  }, []);
+
+  const login = (profile: RetailerProfile) => {
+    setRetailer(profile);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await signOut(auth);
     setRetailer(null);
   };
 
+  const checkRetailerProfile = async (phone: string) => {
+    return await retailerService.getRetailerByPhone(phone);
+  };
+
   return (
-    <RetailerAuthContext.Provider value={{ retailer, login, logout }}>
-      {children}
+    <RetailerAuthContext.Provider value={{ retailer, loading, login, logout, checkRetailerProfile }}>
+      {!loading && children}
     </RetailerAuthContext.Provider>
   );
 }

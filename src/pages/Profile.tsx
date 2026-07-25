@@ -7,7 +7,6 @@ import { useCart } from '../contexts/CartContext';
 import { useRetailer } from '../contexts/RetailerAuthContext';
 import { orderService } from '../services/orderService';
 import { Order } from '../types';
-import { dummyCategories } from '../lib/dummyData';
 import { Link, useNavigate } from 'react-router';
 import { ProductCard } from '../components/product/ProductCard';
 import { SEO } from '../components/SEO';

@@ -1,18 +1,20 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Product, Category } from '../types';
-import { dummyProducts, dummyCategories } from '../lib/dummyData';
+import { productService } from '../services/productService';
+import { categoryService } from '../services/categoryService';
 
 interface AdminDataContextType {
   products: Product[];
   categories: Category[];
-  addProduct: (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  updateProduct: (id: string, updates: Partial<Product>) => void;
-  deleteProduct: (id: string) => void;
-  bulkUpdateProducts: (ids: string[], updates: Partial<Product>) => void;
-  bulkDeleteProducts: (ids: string[]) => void;
-  addCategory: (category: Omit<Category, 'id' | 'slug'>) => void;
-  updateCategory: (id: string, updates: Partial<Category>) => void;
-  deleteCategory: (id: string) => void;
+  refreshData: () => Promise<void>;
+  addProduct: (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateProduct: (id: string, updates: Partial<Product>) => Promise<void>;
+  deleteProduct: (id: string) => Promise<void>;
+  bulkUpdateProducts: (ids: string[], updates: Partial<Product>) => Promise<void>;
+  bulkDeleteProducts: (ids: string[]) => Promise<void>;
+  addCategory: (category: Omit<Category, 'id' | 'slug'>) => Promise<void>;
+  updateCategory: (id: string, updates: Partial<Category>) => Promise<void>;
+  deleteCategory: (id: string) => Promise<void>;
 }
 
 const AdminDataContext = createContext<AdminDataContextType | undefined>(undefined);
@@ -21,63 +23,70 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
 
+  const refreshData = async () => {
+    try {
+      const [fetchedProducts, fetchedCategories] = await Promise.all([
+        productService.getAllProducts(true),
+        categoryService.getAllCategories(true)
+      ]);
+      setProducts(fetchedProducts);
+      setCategories(fetchedCategories);
+    } catch (error) {
+      console.error("Error refreshing admin data:", error);
+    }
+  };
+
   useEffect(() => {
-    // Load initial data
-    setProducts(dummyProducts.map(p => ({ ...p, status: p.status || 'Published' })));
-    setCategories(dummyCategories.map((c, i) => ({ ...c, status: 'Published', displayOrder: i })));
+    refreshData();
   }, []);
 
-  const addProduct = (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newProduct: Product = {
-      ...product,
-      id: `p-${Date.now()}`,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      status: product.status || 'Draft',
-    };
-    setProducts(prev => [newProduct, ...prev]);
+  const addProduct = async (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
+    await productService.saveProduct(product as Partial<Product>);
+    await refreshData();
   };
 
-  const updateProduct = (id: string, updates: Partial<Product>) => {
-    setProducts(prev => prev.map(p => p.id === id ? { ...p, ...updates, updatedAt: Date.now() } : p));
+  const updateProduct = async (id: string, updates: Partial<Product>) => {
+    await productService.saveProduct({ id, ...updates });
+    await refreshData();
   };
 
-  const deleteProduct = (id: string) => {
-    setProducts(prev => prev.filter(p => p.id !== id));
+  const deleteProduct = async (id: string) => {
+    await productService.deleteProduct(id);
+    await refreshData();
   };
 
-  const bulkUpdateProducts = (ids: string[], updates: Partial<Product>) => {
-    setProducts(prev => prev.map(p => ids.includes(p.id) ? { ...p, ...updates, updatedAt: Date.now() } : p));
+  const bulkUpdateProducts = async (ids: string[], updates: Partial<Product>) => {
+    // In a real app we'd use a batch write, but doing it in parallel is okay for now
+    await Promise.all(ids.map(id => productService.saveProduct({ id, ...updates })));
+    await refreshData();
   };
 
-  const bulkDeleteProducts = (ids: string[]) => {
-    setProducts(prev => prev.filter(p => !ids.includes(p.id)));
+  const bulkDeleteProducts = async (ids: string[]) => {
+    await Promise.all(ids.map(id => productService.deleteProduct(id)));
+    await refreshData();
   };
 
-  const addCategory = (category: Omit<Category, 'id' | 'slug'>) => {
+  const addCategory = async (category: Omit<Category, 'id' | 'slug'>) => {
     const slug = category.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    const newCategory: Category = {
-      ...category,
-      id: `c-${Date.now()}`,
-      slug,
-      status: category.status || 'Published',
-      displayOrder: category.displayOrder || categories.length,
-    };
-    setCategories(prev => [...prev, newCategory]);
+    await categoryService.saveCategory({ ...category, slug });
+    await refreshData();
   };
 
-  const updateCategory = (id: string, updates: Partial<Category>) => {
-    setCategories(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
+  const updateCategory = async (id: string, updates: Partial<Category>) => {
+    await categoryService.saveCategory({ id, ...updates });
+    await refreshData();
   };
 
-  const deleteCategory = (id: string) => {
-    setCategories(prev => prev.filter(c => c.id !== id));
+  const deleteCategory = async (id: string) => {
+    await categoryService.deleteCategory(id);
+    await refreshData();
   };
 
   return (
     <AdminDataContext.Provider value={{
       products,
       categories,
+      refreshData,
       addProduct,
       updateProduct,
       deleteProduct,

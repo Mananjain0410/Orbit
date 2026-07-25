@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowRight, CheckCircle2, Factory, TrendingUp, Truck, ShieldCheck, Leaf } from 'lucide-react';
 import { Link } from 'react-router';
-import { dummyCategories } from '../lib/dummyData';
+import { useStore } from '../contexts/StoreContext';
 import { SEO } from '../components/SEO';
 import { useSettings } from '../contexts/SettingsContext';
 
 export function Home() {
   const { settings } = useSettings();
+  const { categories } = useStore();
   const heroImages = [
     "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?auto=format&fit=crop&q=80&w=2000",
     "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?auto=format&fit=crop&q=80&w=2000",
@@ -127,7 +128,7 @@ export function Home() {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {dummyCategories.map((cat, i) => (
+          {categories.map((cat, i) => (
             <Link key={cat.id} to={`/category/${cat.slug}`} className="group relative aspect-[3/4] overflow-hidden bg-muted flex flex-col justify-end p-6">
               <div className="absolute inset-0 z-0">
                 <img 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router';
-import { dummyRetailers } from '../../lib/dummyData';
+import { retailerService, RetailerProfile } from '../../services/retailerService';
 import { ArrowLeft, User, Phone, MapPin, Building2, Calendar, FileText, ShoppingBag, ShieldAlert } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { orderService } from '../../services/orderService';
@@ -10,8 +10,16 @@ import { Spinner } from '../../components/ui/Spinner';
 
 export function AdminRetailerProfile() {
   const { id } = useParams();
-  const retailer = dummyRetailers.find(r => r.uid === id);
-  const [status, setStatus] = useState(retailer?.status || 'active');
+  const [retailer, setRetailer] = useState<RetailerProfile | null>(null);
+  useEffect(() => {
+    if(id) retailerService.getRetailerById(id).then(r => {
+       if(r) {
+           setRetailer(r);
+           setStatus(r.status);
+       }
+    });
+  }, [id]);
+  const [status, setStatus] = useState('active');
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
 

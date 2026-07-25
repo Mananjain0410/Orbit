@@ -43,10 +43,15 @@ import { AdminMediaLibrary } from './pages/admin/AdminMediaLibrary';
 import { AdminSettings } from './pages/admin/AdminSettings';
 import { ToastProvider } from './components/ui/Toast';
 
+import { Register } from './pages/Register';
+
+import { StoreProvider } from './contexts/StoreContext';
+
 export default function App() {
   return (
     <HelmetProvider>
       <ToastProvider>
+        <StoreProvider>
         <RetailerAuthProvider>
         <AdminAuthProvider>
           <SettingsProvider>
@@ -59,6 +64,7 @@ export default function App() {
                     <Route path="/" element={<Layout />}>
                       <Route index element={<Home />} />
                       <Route path="login" element={<Login />} />
+                      <Route path="register" element={<Register />} />
                       <Route path="profile" element={<Profile />} />
                       <Route path="category/:slug" element={<CategoryPage />} />
                       <Route path="product/:id" element={<ProductPage />} />
@@ -103,6 +109,7 @@ export default function App() {
         </SettingsProvider>
       </AdminAuthProvider>
       </RetailerAuthProvider>
+      </StoreProvider>
       </ToastProvider>
     </HelmetProvider>
   );

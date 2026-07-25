@@ -1,5 +1,5 @@
 import { Order, OrderItem } from '../types';
-import { dummyProducts } from '../lib/dummyData';
+import { productService } from './productService';
 import { orderService } from './orderService';
 import { notificationService } from './notificationService';
 import { settingsService } from './settingsService';
@@ -22,7 +22,7 @@ export const inventoryService = {
     
     // Group order items by product and color to check against current inventory
     for (const item of order.items) {
-      const product = dummyProducts.find(p => p.id === item.productId);
+      const product = await productService.getProductById(item.productId);
       if (!product) {
         shortages.push({
           productId: item.productId,
@@ -47,7 +47,7 @@ export const inventoryService = {
         });
       }
     }
-
+    
     return {
       isSufficient: shortages.length === 0,
       shortages
@@ -61,20 +61,22 @@ export const inventoryService = {
     }
 
     const check = await this.checkInventory(order);
+    
     if (!check.isSufficient) {
       return { success: false, error: 'Insufficient inventory for some items.' };
     }
 
-    // Mutate in-memory dummyProducts (since we don't have a real DB for products yet)
     const currentSettings = await settingsService.getSettings();
     const threshold = currentSettings.inventory.lowStockThreshold || 10;
     
     for (const item of order.items) {
-      const product = dummyProducts.find(p => p.id === item.productId);
+      const product = await productService.getProductById(item.productId);
       if (product) {
         const productColor = product.colors.find(c => c.name === item.color);
         if (productColor && typeof productColor.stock === 'number') {
           productColor.stock -= item.sets;
+          
+          await productService.saveProduct(product);
           
           if (productColor.stock < threshold) {
             // Notify Admin of low stock
@@ -102,13 +104,13 @@ export const inventoryService = {
       return { success: false, error: 'Inventory has not been deducted for this order, so it cannot be restored.' };
     }
 
-    // Mutate in-memory dummyProducts
     for (const item of order.items) {
-      const product = dummyProducts.find(p => p.id === item.productId);
+      const product = await productService.getProductById(item.productId);
       if (product) {
         const productColor = product.colors.find(c => c.name === item.color);
         if (productColor && typeof productColor.stock === 'number') {
           productColor.stock += item.sets;
+          await productService.saveProduct(product);
         }
       }
     }

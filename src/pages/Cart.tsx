@@ -3,14 +3,15 @@ import { Button } from '../components/ui/Button';
 import { ArrowRight, Trash2, ShoppingBag } from 'lucide-react';
 import { Link } from 'react-router';
 import { useCart } from '../contexts/CartContext';
-import { dummyProducts, dummyCategories } from '../lib/dummyData';
+import { useStore } from '../contexts/StoreContext';
 import { SEO } from '../components/SEO';
 
 export function Cart() {
   const { items, updateQuantity, removeColor, removeProduct, totalSets, totalPrice } = useCart();
+  const { products, categories } = useStore();
 
   // Recommendations: Just random items not in cart for now
-  const recommendations = dummyProducts.filter(p => !items.find(i => i.product.id === p.id)).slice(0, 4);
+  const recommendations = products.filter(p => !items.find(i => i.product.id === p.id)).slice(0, 4);
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 min-h-[70vh] pt-24 md:pt-32">
@@ -30,7 +31,7 @@ export function Cart() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 lg:gap-16">
           <div className="lg:col-span-2 space-y-8">
             {items.map((item) => {
-              const category = dummyCategories.find(c => c.id === item.product.categoryId);
+              const category = categories.find(c => c.id === item.product.categoryId);
               return (
                 <div key={item.product.id} className="border border-border p-4 sm:p-6 flex flex-col sm:flex-row gap-6">
                   {/* Product Info */}
@@ -160,7 +161,7 @@ export function Cart() {
           <h2 className="text-[10px] uppercase tracking-[3px] font-bold mb-8">You Might Also Like</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
             {recommendations.map(product => {
-              const category = dummyCategories.find(c => c.id === product.categoryId);
+              const category = categories.find(c => c.id === product.categoryId);
               return (
                 <Link key={product.id} to={`/product/${product.id}`} className="group outline-none flex flex-col gap-3">
                   <div className="aspect-[3/4] overflow-hidden bg-muted relative border border-border">

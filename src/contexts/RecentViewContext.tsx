@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Product } from '../types';
-import { dummyProducts } from '../lib/dummyData';
+import { useStore } from '../contexts/StoreContext';
 
 interface RecentViewContextType {
   recentViews: Product[];
@@ -30,7 +30,8 @@ export function RecentViewProvider({ children }: { children: React.ReactNode }) 
     });
   };
 
-  const recentViews = recentIds.map(id => dummyProducts.find(p => p.id === id)).filter((p): p is Product => p !== undefined);
+  const { products } = useStore();
+  const recentViews = recentIds.map(id => products.find(p => p.id === id)).filter((p): p is Product => p !== undefined);
 
   return (
     <RecentViewContext.Provider value={{ recentViews, addRecentView }}>

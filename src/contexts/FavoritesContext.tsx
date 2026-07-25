@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Product } from '../types';
-import { dummyProducts } from '../lib/dummyData'; // We'll need this to lookup products for simplicity
+import { useStore } from '../contexts/StoreContext';
 
 interface FavoritesContextType {
   favorites: Product[];
@@ -35,7 +35,8 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
 
   const isFavorite = (productId: string) => favoriteIds.includes(productId);
 
-  const favorites = dummyProducts.filter(p => favoriteIds.includes(p.id));
+  const { products } = useStore();
+  const favorites = products.filter(p => favoriteIds.includes(p.id));
 
   return (
     <FavoritesContext.Provider value={{ favorites, addFavorite, removeFavorite, isFavorite }}>
