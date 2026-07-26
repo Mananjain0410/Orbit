@@ -8,11 +8,11 @@ import { useSettings } from '../contexts/SettingsContext';
 export function Home() {
   const { settings } = useSettings();
   const { categories } = useStore();
-  const heroImages = [
-    "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?auto=format&fit=crop&q=80&w=2000",
-    "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?auto=format&fit=crop&q=80&w=2000",
-    "https://images.unsplash.com/photo-1534452203293-494d7ddbf7e0?auto=format&fit=crop&q=80&w=2000"
+  
+  const heroImages = settings.homepage?.heroImages || [
+    "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?auto=format&fit=crop&q=80&w=2000"
   ];
+  const features = settings.homepage?.features || [];
   
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
@@ -98,22 +98,25 @@ export function Home() {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[
-              { icon: Leaf, title: "Premium Fabrics", desc: "We source only the highest grade cotton blends and technical fabrics." },
-              { icon: ShieldCheck, title: "Quality Assured", desc: "Multi-stage quality checks ensure zero defect rate in wholesale orders." },
-              { icon: TrendingUp, title: "Latest Designs", desc: "Our catalog updates monthly with market-researched trends." },
-              { icon: Factory, title: "Direct Manufacturing", desc: "No middlemen. Factory direct pricing ensures better margins for you." },
-              { icon: Truck, title: "Fast Dispatch", desc: "90% of wholesale orders are dispatched within 24 hours." },
-              { icon: CheckCircle2, title: "Comfort Fit", desc: "Patterns perfected over years for the ideal balance of style and comfort." }
-            ].map((feature, i) => (
-              <div key={i} className="bg-background p-8 border border-border group hover:border-foreground/20 transition-all duration-300">
-                <feature.icon className="w-8 h-8 mb-6 text-foreground/70 group-hover:text-foreground transition-colors" strokeWidth={1.5} />
-                <h3 className="font-serif text-xl mb-3">{feature.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {feature.desc}
-                </p>
-              </div>
-            ))}
+            {features.map((feature, i) => {
+              // Map string to icon
+              let Icon = CheckCircle2;
+              if (feature.icon === 'Leaf') Icon = Leaf;
+              if (feature.icon === 'ShieldCheck') Icon = ShieldCheck;
+              if (feature.icon === 'TrendingUp') Icon = TrendingUp;
+              if (feature.icon === 'Factory') Icon = Factory;
+              if (feature.icon === 'Truck') Icon = Truck;
+              
+              return (
+                <div key={i} className="bg-background p-8 border border-border group hover:border-foreground/20 transition-all duration-300">
+                  <Icon className="w-8 h-8 mb-6 text-foreground/70 group-hover:text-foreground transition-colors" strokeWidth={1.5} />
+                  <h3 className="font-serif text-xl mb-3">{feature.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {feature.desc}
+                  </p>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>

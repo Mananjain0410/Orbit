@@ -6,20 +6,24 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { 
   ArrowLeft, Save, Eye, Image as ImageIcon, Box, LayoutList, 
-  Plus, X, Trash2, GripVertical, Check
+  Plus, X, Trash2, GripVertical, Check, Upload, Loader2
 } from 'lucide-react';
 import { Product, ProductColor } from '../../types';
+import { uploadService } from '../../services/uploadService';
+import { useToast } from '../../components/ui/Toast';
 
 export function AdminProductEdit() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { products, categories, updateProduct, addProduct } = useAdminData();
+  const { error: showError } = useToast();
   
   const isNew = id === 'new';
   const existingProduct = isNew ? null : products.find(p => p.id === id);
 
   const [activeTab, setActiveTab] = useState<'general' | 'images' | 'inventory'>('general');
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
 
   // Form State
@@ -103,6 +107,56 @@ export function AdminProductEdit() {
     const newSizes = [...(formData.sizes || [])];
     newSizes.splice(index, 1);
     handleChange('sizes', newSizes);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    
+    try {
+      setIsUploading(true);
+      const newImages = [...(formData.images || [])];
+      
+      for (let i = 0; i < e.target.files.length; i++) {
+        const file = e.target.files[i];
+        const url = await uploadService.uploadImage(file);
+        newImages.push(url);
+      }
+      
+      handleChange('images', newImages);
+    } catch (error) {
+      console.error('Upload failed:', error);
+      showError('Failed to upload images');
+    } finally {
+      setIsUploading(false);
+      // Reset input
+      e.target.value = '';
+    }
+  };
+
+  const removeImage = async (index: number) => {
+    const newImages = [...(formData.images || [])];
+    const urlToRemove = newImages[index];
+    
+    try {
+      await uploadService.deleteImage(urlToRemove);
+    } catch (error) {
+      console.error('Failed to delete from storage', error);
+      // We still remove from UI even if storage delete fails
+    }
+    
+    newImages.splice(index, 1);
+    handleChange('images', newImages);
+  };
+
+  const moveImage = (index: number, direction: 'up' | 'down') => {
+    if (direction === 'up' && index === 0) return;
+    if (direction === 'down' && index === (formData.images?.length || 0) - 1) return;
+    
+    const newImages = [...(formData.images || [])];
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    
+    [newImages[index], newImages[newIndex]] = [newImages[newIndex], newImages[index]];
+    handleChange('images', newImages);
   };
 
   if (!isNew && !existingProduct) {
@@ -328,14 +382,33 @@ export function AdminProductEdit() {
               <h2 className="text-lg font-medium border-b border-neutral-100 pb-4">Product Images</h2>
               <p className="text-sm text-neutral-500">Upload high-quality images. The first image will be used as the product thumbnail.</p>
               
-              {/* Dummy Image Upload Area */}
-              <div className="border-2 border-dashed border-neutral-200 rounded-xl p-8 flex flex-col items-center justify-center text-center hover:bg-neutral-50 transition-colors cursor-pointer">
-                <div className="w-12 h-12 bg-neutral-100 rounded-full flex items-center justify-center mb-3">
-                  <ImageIcon className="w-6 h-6 text-neutral-400" />
-                </div>
-                <p className="font-medium text-neutral-700">Click to upload or drag and drop</p>
-                <p className="text-xs text-neutral-500 mt-1">SVG, PNG, JPG or GIF (max. 800x400px)</p>
-              </div>
+              <label className="border-2 border-dashed border-neutral-200 rounded-xl p-8 flex flex-col items-center justify-center text-center hover:bg-neutral-50 transition-colors cursor-pointer relative overflow-hidden">
+                <input 
+                  type="file" 
+                  multiple 
+                  accept="image/*" 
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  onChange={handleImageUpload}
+                  disabled={isUploading}
+                />
+                
+                {isUploading ? (
+                  <>
+                    <div className="w-12 h-12 bg-neutral-100 rounded-full flex items-center justify-center mb-3">
+                      <Loader2 className="w-6 h-6 text-neutral-400 animate-spin" />
+                    </div>
+                    <p className="font-medium text-neutral-700">Uploading images...</p>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-12 h-12 bg-neutral-100 rounded-full flex items-center justify-center mb-3">
+                      <Upload className="w-6 h-6 text-neutral-400" />
+                    </div>
+                    <p className="font-medium text-neutral-700">Click to upload or drag and drop</p>
+                    <p className="text-xs text-neutral-500 mt-1">SVG, PNG, JPG or GIF (max. 800x400px)</p>
+                  </>
+                )}
+              </label>
 
               {/* Image Gallery */}
               {formData.images && formData.images.length > 0 && (
@@ -344,10 +417,20 @@ export function AdminProductEdit() {
                     <div key={index} className="relative group rounded-lg border border-neutral-200 overflow-hidden aspect-[3/4]">
                       <img src={img} alt={`Product ${index}`} className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                        <button className="w-8 h-8 bg-white rounded-full flex items-center justify-center text-neutral-900 hover:bg-neutral-100" title="Move">
-                          <GripVertical className="w-4 h-4" />
-                        </button>
-                        <button className="w-8 h-8 bg-white rounded-full flex items-center justify-center text-red-600 hover:bg-red-50" title="Delete">
+                        {index > 0 && (
+                          <button 
+                            onClick={(e) => { e.preventDefault(); moveImage(index, 'up'); }}
+                            className="w-8 h-8 bg-white rounded-full flex items-center justify-center text-neutral-900 hover:bg-neutral-100" 
+                            title="Make Primary"
+                          >
+                            <GripVertical className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button 
+                          onClick={(e) => { e.preventDefault(); removeImage(index); }}
+                          className="w-8 h-8 bg-white rounded-full flex items-center justify-center text-red-600 hover:bg-red-50" 
+                          title="Delete"
+                        >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>

@@ -6,16 +6,19 @@ export const productService = {
   async getAllProducts(includeHidden: boolean = false): Promise<Product[]> {
     try {
       const productsRef = collection(db, 'products');
-      let q = query(productsRef, orderBy('createdAt', 'desc'));
-      
-      // Note: In real app, we might want to use a composite index for filtering + sorting.
-      // For now we'll fetch all and filter client-side if needed, 
-      // or just trust the admin needs all and retailer needs 'Published'.
-      const snapshot = await getDocs(q);
-      const products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+      let q;
       
       if (!includeHidden) {
-        return products.filter(p => p.status === 'Published');
+        q = query(productsRef, where('status', '==', 'Published'));
+      } else {
+        q = query(productsRef, orderBy('createdAt', 'desc'));
+      }
+      
+      const snapshot = await getDocs(q);
+      let products = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as Product));
+      
+      if (!includeHidden) {
+        products.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       }
       return products;
     } catch (error) {
@@ -27,14 +30,16 @@ export const productService = {
   async getProductsByCategory(categoryId: string, includeHidden: boolean = false): Promise<Product[]> {
     try {
       const productsRef = collection(db, 'products');
-      const q = query(productsRef, where('categoryId', '==', categoryId));
+      let q;
+      if (!includeHidden) {
+        q = query(productsRef, where('categoryId', '==', categoryId), where('status', '==', 'Published'));
+      } else {
+        q = query(productsRef, where('categoryId', '==', categoryId));
+      }
+      
       const snapshot = await getDocs(q);
       
-      const products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
-      
-      if (!includeHidden) {
-        return products.filter(p => p.status === 'Published');
-      }
+      let products = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as Product));
       return products;
     } catch (error) {
       console.error('Error fetching products by category:', error);
@@ -48,7 +53,7 @@ export const productService = {
       const snapshot = await getDoc(docRef);
       
       if (!snapshot.exists()) return null;
-      return { id: snapshot.id, ...snapshot.data() } as Product;
+      return { id: snapshot.id, ...(snapshot.data() as any) } as Product;
     } catch (error) {
       console.error('Error fetching product:', error);
       throw error;

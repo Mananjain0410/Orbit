@@ -19,12 +19,12 @@ export function Login() {
   
   const navigate = useNavigate();
   const { checkRetailerProfile, login } = useRetailer();
-  const { showToast } = useToast();
+  const { success, error: showError } = useToast();
 
   useEffect(() => {
     // Initialize recaptcha when component mounts
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+    if (!(window as any).recaptchaVerifier) {
+      (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
         'size': 'invisible',
         'callback': (response: any) => {
           // reCAPTCHA solved
@@ -48,18 +48,18 @@ export function Login() {
       try {
         setLoading(true);
         const formattedPhone = formatPhoneNumber(phone);
-        const appVerifier = window.recaptchaVerifier;
+        const appVerifier = (window as any).recaptchaVerifier;
         const confirmation = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
         setConfirmationResult(confirmation);
         setStep('OTP');
-        showToast('OTP sent successfully', 'success');
+        success('OTP sent successfully');
       } catch (error: any) {
         console.error('Error sending OTP:', error);
-        showToast(error.message || 'Failed to send OTP. Please try again.', 'error');
+        showError(error.message || 'Failed to send OTP. Please try again.');
         // Reset recaptcha
-        if (window.recaptchaVerifier) {
-          window.recaptchaVerifier.render().then((widgetId: any) => {
-            window.grecaptcha.reset(widgetId);
+        if ((window as any).recaptchaVerifier) {
+          (window as any).recaptchaVerifier.render().then((widgetId: any) => {
+            (window as any).grecaptcha.reset(widgetId);
           });
         }
       } finally {
@@ -78,7 +78,7 @@ export function Login() {
       const user = result.user;
       
       if (user.phoneNumber) {
-        const profile = await checkRetailerProfile(user.phoneNumber);
+        const profile = await checkRetailerProfile(user.uid);
         
         if (profile) {
           login(profile);
@@ -92,7 +92,7 @@ export function Login() {
       }
     } catch (error: any) {
       console.error('Error verifying OTP:', error);
-      showToast(error.message || 'Invalid OTP. Please try again.', 'error');
+      showError(error.message || 'Invalid OTP. Please try again.');
     } finally {
       setLoading(false);
     }

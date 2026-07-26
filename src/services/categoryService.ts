@@ -1,4 +1,4 @@
-import { collection, doc, setDoc, getDoc, getDocs, query, orderBy, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, getDoc, getDocs, query, orderBy, updateDoc, deleteDoc, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { Category } from '../types';
 
@@ -6,14 +6,22 @@ export const categoryService = {
   async getAllCategories(includeHidden: boolean = false): Promise<Category[]> {
     try {
       const categoriesRef = collection(db, 'categories');
-      const q = query(categoriesRef, orderBy('displayOrder', 'asc'));
-      const snapshot = await getDocs(q);
-      
-      const categories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
+      let q;
       
       if (!includeHidden) {
-        return categories.filter(c => c.status !== 'Hidden');
+        q = query(categoriesRef, where('status', '==', 'Published'));
+      } else {
+        q = query(categoriesRef, orderBy('displayOrder', 'asc'));
       }
+      
+      const snapshot = await getDocs(q);
+      
+      let categories = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as Category));
+      
+      if (!includeHidden) {
+        categories.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+      }
+      
       return categories;
     } catch (error) {
       console.error('Error fetching categories:', error);
@@ -44,7 +52,7 @@ export const categoryService = {
         await updateDoc(docRef, updateData);
         
         const snapshot = await getDoc(docRef);
-        return { id, ...snapshot.data() } as Category;
+        return { id, ...(snapshot.data() as any) } as Category;
       } else {
         // Create
         const newData = {

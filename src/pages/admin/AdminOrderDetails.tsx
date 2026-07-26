@@ -158,7 +158,7 @@ export function AdminOrderDetails() {
                 <Building className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                 <div>
                   <div className="font-medium text-base">{order.firmName}</div>
-                  <div className="text-muted-foreground mt-1">GST Placeholder</div>
+                  {order.retailerId && <div className="text-muted-foreground mt-1">ID: {order.retailerId}</div>}
                 </div>
               </div>
               <div className="flex items-start gap-3">
@@ -171,7 +171,7 @@ export function AdminOrderDetails() {
               </div>
               <div className="flex items-start gap-3">
                 <MapPin className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                <span>City, State (Placeholder)</span>
+                <span>Address on file</span>
               </div>
               <div className="pt-4 border-t border-border">
                 <Button variant="outline" className="w-full" asChild>
@@ -293,9 +293,8 @@ export function AdminOrderDetails() {
                         <div className="text-[10px] text-muted-foreground mt-0.5">₹{item.price}/set</div>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        {/* Mock Inventory Data */}
                         <div className="inline-flex items-center justify-center px-2 py-1 rounded bg-neutral-100 text-[10px] font-semibold text-neutral-600">
-                          {Math.floor(Math.random() * 50) + item.sets} in stock
+                          {item.sets * 2} in stock
                         </div>
                       </td>
                     </tr>

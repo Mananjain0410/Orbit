@@ -14,9 +14,9 @@ export function AdminInventory() {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState(initialStatus);
-  const isLoading = products.length === 0;
   
   const { products, categories, updateProduct } = useAdminData();
+  const isLoading = products.length === 0;
   
   const [editingStock, setEditingStock] = useState<{ productId: string, colorName: string } | null>(null);
   const [editValue, setEditValue] = useState<string>('');

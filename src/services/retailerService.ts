@@ -43,7 +43,7 @@ export const retailerService = {
         return null;
       }
       
-      return { uid: snapshot.id, ...snapshot.data() } as RetailerProfile;
+      return { uid: snapshot.id, ...(snapshot.data() as any) } as RetailerProfile;
     } catch (error) {
       console.error('Error fetching retailer by ID:', error);
       throw error;

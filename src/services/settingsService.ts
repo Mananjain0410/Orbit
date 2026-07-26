@@ -18,6 +18,10 @@ export interface AppSettings {
     aboutText: string;
     footerText: string;
   };
+  homepage: {
+    heroImages: string[];
+    features: { title: string; desc: string; icon: string }[];
+  };
   inventory: {
     lowStockThreshold: number;
     outOfStockBehavior: 'Show as Sold Out' | 'Hide completely' | 'Allow backorders';
@@ -40,6 +44,21 @@ export const defaultSettings: AppSettings = {
     tagline: 'Premium B2B Apparel',
     aboutText: 'Leading manufacturer and wholesaler of premium men\'s lowers, trackpants, and casual wear.',
     footerText: '© 2026 MNFR Clothing. All rights reserved.',
+  },
+  homepage: {
+    heroImages: [
+      "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?auto=format&fit=crop&q=80&w=2000",
+      "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?auto=format&fit=crop&q=80&w=2000",
+      "https://images.unsplash.com/photo-1534452203293-494d7ddbf7e0?auto=format&fit=crop&q=80&w=2000"
+    ],
+    features: [
+      { icon: "Leaf", title: "Premium Fabrics", desc: "We source only the highest grade cotton blends and technical fabrics." },
+      { icon: "ShieldCheck", title: "Quality Assured", desc: "Multi-stage quality checks ensure zero defect rate in wholesale orders." },
+      { icon: "TrendingUp", title: "Latest Designs", desc: "Our catalog updates monthly with market-researched trends." },
+      { icon: "Factory", title: "Direct Manufacturing", desc: "No middlemen. Factory direct pricing ensures better margins for you." },
+      { icon: "Truck", title: "Fast Dispatch", desc: "90% of wholesale orders are dispatched within 24 hours." },
+      { icon: "CheckCircle2", title: "Comfort Fit", desc: "Patterns perfected over years for the ideal balance of style and comfort." }
+    ]
   },
   inventory: {
     lowStockThreshold: 10,

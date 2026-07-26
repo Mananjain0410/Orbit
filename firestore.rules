@@ -5,15 +5,16 @@ service cloud.firestore {
     
     // Admin checking function
     function isAdmin() {
-      // In a real app, you would verify the user's role here
-      // return request.auth != null && request.auth.token.role == 'admin';
-      return true; // Mock for now
+      // Admin users have an admin role or are recorded in admins collection
+      return request.auth != null && (
+        request.auth.token.email.matches('.*@mnfr\\.in$') || 
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
     }
     
     // Retailer checking function
     function isRetailer(userId) {
-      // return request.auth != null && request.auth.uid == userId;
-      return true; // Mock for now
+      return request.auth != null && request.auth.uid == userId;
     }
 
     // Orders Collection
@@ -37,6 +38,18 @@ service cloud.firestore {
       // Anyone can read settings (for homepage, footer, etc.)
       allow read: if true;
       // Only admins can update settings
+      allow write: if isAdmin();
+    }
+    
+    // Products Collection
+    match /products/{productId} {
+      allow read: if isAdmin() || (resource.data.status == 'Published' || !exists(/databases/$(database)/documents/products/$(productId)));
+      allow write: if isAdmin();
+    }
+
+    // Categories Collection
+    match /categories/{categoryId} {
+      allow read: if isAdmin() || (resource.data.status == 'Published' || !exists(/databases/$(database)/documents/categories/$(categoryId)));
       allow write: if isAdmin();
     }
     

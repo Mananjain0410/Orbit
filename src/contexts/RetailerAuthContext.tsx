@@ -8,7 +8,7 @@ interface RetailerAuthContextType {
   loading: boolean;
   login: (profile: RetailerProfile) => void;
   logout: () => Promise<void>;
-  checkRetailerProfile: (phone: string) => Promise<RetailerProfile | null>;
+  checkRetailerProfile: (uid: string) => Promise<RetailerProfile | null>;
 }
 
 const RetailerAuthContext = createContext<RetailerAuthContextType | undefined>(undefined);
@@ -21,7 +21,7 @@ export function RetailerAuthProvider({ children }: { children: React.ReactNode }
     const unsubscribe = onAuthStateChanged(auth, async (user: User | null) => {
       if (user && user.phoneNumber) {
         try {
-          const profile = await retailerService.getRetailerByPhone(user.phoneNumber);
+          const profile = await retailerService.getRetailerById(user.uid);
           setRetailer(profile);
         } catch (error) {
           console.error("Error fetching retailer profile on auth change:", error);
@@ -45,8 +45,8 @@ export function RetailerAuthProvider({ children }: { children: React.ReactNode }
     setRetailer(null);
   };
 
-  const checkRetailerProfile = async (phone: string) => {
-    return await retailerService.getRetailerByPhone(phone);
+  const checkRetailerProfile = async (uid: string) => {
+    return await retailerService.getRetailerById(uid);
   };
 
   return (

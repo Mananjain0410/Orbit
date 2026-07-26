@@ -11,7 +11,7 @@ export function Register() {
   const location = useLocation();
   const navigate = useNavigate();
   const { login } = useRetailer();
-  const { showToast } = useToast();
+  const { success, error: showError } = useToast();
   
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -47,11 +47,11 @@ export function Register() {
       });
       
       login(profile);
-      showToast('Registration successful!', 'success');
+      success('Registration successful!');
       navigate('/');
     } catch (error) {
       console.error('Registration error:', error);
-      showToast('Failed to register. Please try again.', 'error');
+      showError('Failed to register. Please try again.');
     } finally {
       setLoading(false);
     }
