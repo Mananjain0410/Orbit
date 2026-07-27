@@ -7,7 +7,7 @@ import { useCart } from '../contexts/CartContext';
 import { useRetailer } from '../contexts/RetailerAuthContext';
 import { orderService } from '../services/orderService';
 import { Order } from '../types';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { ProductCard } from '../components/product/ProductCard';
 import { SEO } from '../components/SEO';
 import { Spinner } from '../components/ui/Spinner';
@@ -19,18 +19,37 @@ export function Profile() {
   const { items, totalSets, totalPrice } = useCart();
   const { retailer, logout } = useRetailer();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'profile' | 'favorites' | 'recent' | 'cart' | 'history'>('profile');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab') as 'profile' | 'favorites' | 'recent' | 'cart' | 'history' | 'orders' | null;
+  const initialTab = (tabParam === 'orders' ? 'history' : tabParam) || 'profile';
+  const [activeTab, setActiveTab] = useState<'profile' | 'favorites' | 'recent' | 'cart' | 'history'>(initialTab);
+  
+  useEffect(() => {
+    const currentTabParam = searchParams.get('tab');
+    const targetTab = currentTabParam === 'orders' ? 'history' : currentTabParam;
+    if (targetTab && ['profile', 'favorites', 'recent', 'cart', 'history'].includes(targetTab)) {
+      setActiveTab(targetTab as any);
+    }
+  }, [searchParams]);
+
+  const handleTabChange = (tab: 'profile' | 'favorites' | 'recent' | 'cart' | 'history') => {
+    setActiveTab(tab);
+    setSearchParams({ tab });
+  };
   
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
 
   useEffect(() => {
+    let unsubscribe = () => {};
     if (activeTab === 'history' && retailer) {
       setLoadingOrders(true);
-      orderService.getRetailerOrders(retailer.uid)
-        .then(data => setOrders(data))
-        .finally(() => setLoadingOrders(false));
+      unsubscribe = orderService.subscribeToRetailerOrders(retailer.uid, (data) => {
+        setOrders(data);
+        setLoadingOrders(false);
+      });
     }
+    return () => unsubscribe();
   }, [activeTab, retailer]);
 
   if (!retailer) {
@@ -60,35 +79,35 @@ export function Profile() {
             <Button 
               variant={activeTab === 'profile' ? 'default' : 'ghost'} 
               className={`justify-start rounded-none h-12 text-[11px] uppercase tracking-[2px] font-bold ${activeTab === 'profile' ? '' : 'text-muted-foreground hover:bg-muted/50'}`}
-              onClick={() => setActiveTab('profile')}
+              onClick={() => handleTabChange('profile')}
             >
               <User className="mr-3 w-4 h-4" /> Account Details
             </Button>
             <Button 
               variant={activeTab === 'history' ? 'default' : 'ghost'} 
               className={`justify-start rounded-none h-12 text-[11px] uppercase tracking-[2px] font-bold ${activeTab === 'history' ? '' : 'text-muted-foreground hover:bg-muted/50'}`}
-              onClick={() => setActiveTab('history')}
+              onClick={() => handleTabChange('history')}
             >
               <ShieldCheck className="mr-3 w-4 h-4" /> Order History
             </Button>
             <Button 
               variant={activeTab === 'favorites' ? 'default' : 'ghost'} 
               className={`justify-start rounded-none h-12 text-[11px] uppercase tracking-[2px] font-bold ${activeTab === 'favorites' ? '' : 'text-muted-foreground hover:bg-muted/50'}`}
-              onClick={() => setActiveTab('favorites')}
+              onClick={() => handleTabChange('favorites')}
             >
               <Heart className="mr-3 w-4 h-4" /> Favorites ({favorites.length})
             </Button>
             <Button 
               variant={activeTab === 'recent' ? 'default' : 'ghost'} 
               className={`justify-start rounded-none h-12 text-[11px] uppercase tracking-[2px] font-bold ${activeTab === 'recent' ? '' : 'text-muted-foreground hover:bg-muted/50'}`}
-              onClick={() => setActiveTab('recent')}
+              onClick={() => handleTabChange('recent')}
             >
               <Clock className="mr-3 w-4 h-4" /> Recently Viewed
             </Button>
             <Button 
               variant={activeTab === 'cart' ? 'default' : 'ghost'} 
               className={`justify-start rounded-none h-12 text-[11px] uppercase tracking-[2px] font-bold ${activeTab === 'cart' ? '' : 'text-muted-foreground hover:bg-muted/50'}`}
-              onClick={() => setActiveTab('cart')}
+              onClick={() => handleTabChange('cart')}
             >
               <ShoppingBag className="mr-3 w-4 h-4" /> Saved Cart ({items.length})
             </Button>

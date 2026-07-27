@@ -40,7 +40,7 @@ export function Checkout() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (items.length === 0) return;
+    if (items.length === 0 || isSubmitting) return;
     
     setIsSubmitting(true);
     try {

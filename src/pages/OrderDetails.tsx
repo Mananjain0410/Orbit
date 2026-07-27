@@ -28,16 +28,20 @@ export function OrderDetails() {
   const { retailer } = useRetailer();
 
   useEffect(() => {
+    let unsubscribe = () => {};
     if (id) {
-      orderService.getOrder(id).then(data => {
+      unsubscribe = orderService.subscribeToOrder(id, (data) => {
         setOrder(data);
         setLoading(false);
       });
     }
+    return () => unsubscribe();
   }, [id]);
 
   const handleReorder = () => {
     if (!order) return;
+    
+    clearCart();
     
     let unavailableCount = 0;
     

@@ -61,7 +61,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateQuantity = (productId: string, colorName: string, quantity: number) => {
-    if (quantity <= 0) {
+    if (quantity < 0) {
       removeColor(productId, colorName);
       return;
     }

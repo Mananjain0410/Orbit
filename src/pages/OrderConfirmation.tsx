@@ -37,7 +37,7 @@ export function OrderConfirmation() {
         Thank you. Your wholesale order request has been received and is currently <span className="font-semibold text-foreground">Pending Review</span>. We will contact you shortly with confirmation.
       </p>
 
-      <div className="w-full border border-border p-8 bg-muted/10 mb-10 text-left flex flex-col md:flex-row justify-between gap-8">
+      <div className="w-full border border-border p-8 bg-muted/10 mb-10 text-left grid grid-cols-2 md:grid-cols-4 gap-8">
         <div>
           <span className="text-[10px] text-muted-foreground uppercase tracking-[2px] block mb-2">Order Number</span>
           <span className="font-serif text-2xl">{order.orderNumber}</span>
@@ -47,8 +47,12 @@ export function OrderConfirmation() {
           <span className="font-medium text-lg">{new Date(order.createdAt).toLocaleDateString()}</span>
         </div>
         <div>
-          <span className="text-[10px] text-muted-foreground uppercase tracking-[2px] block mb-2">Estimated Value</span>
-          <span className="font-medium text-lg">₹{order.estimatedValue.toLocaleString()}</span>
+          <span className="text-[10px] text-muted-foreground uppercase tracking-[2px] block mb-2">Total Items</span>
+          <span className="font-medium text-lg">{order.totalProducts}</span>
+        </div>
+        <div>
+          <span className="text-[10px] text-muted-foreground uppercase tracking-[2px] block mb-2">Total Sets</span>
+          <span className="font-medium text-lg">{order.totalSets}</span>
         </div>
       </div>
 

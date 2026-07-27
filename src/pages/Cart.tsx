@@ -84,6 +84,11 @@ export function Cart() {
                                   if (!isNaN(num) && num >= 0) updateQuantity(item.product.id, sel.name, num);
                                 }
                               }}
+                              onBlur={() => {
+                                if (sel.quantity === 0) {
+                                  removeColor(item.product.id, sel.name);
+                                }
+                              }}
                               className="w-16 h-8 border border-border text-center focus:outline-none focus:border-foreground text-sm font-medium bg-background"
                             />
                             <button onClick={() => removeColor(item.product.id, sel.name)} className="text-muted-foreground hover:text-red-500 transition-colors">

@@ -24,9 +24,26 @@ export const orderService = {
     
     // Generate Order Number
     const date = new Date();
-    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
-    const idSuffix = newDocRef.id.slice(-5).toUpperCase();
-    const orderNumber = `ORD-${dateStr}-${idSuffix}`;
+    const yearStr = date.getFullYear().toString();
+    
+    // Find the latest order in the current year to generate sequential ID
+    const q = query(
+      collection(db, 'orders'),
+      where('orderNumber', '>=', `ORD-${yearStr}-`),
+      where('orderNumber', '<', `ORD-${yearStr}-\uf8ff`),
+      orderBy('orderNumber', 'desc')
+    );
+    const qs = await getDocs(q);
+    let sequenceNumber = 1;
+    if (!qs.empty) {
+      const latestOrderNumber = qs.docs[0].data().orderNumber as string;
+      const match = latestOrderNumber.match(/-(\d+)$/);
+      if (match) {
+        sequenceNumber = parseInt(match[1], 10) + 1;
+      }
+    }
+    const paddedSequence = sequenceNumber.toString().padStart(5, '0');
+    const orderNumber = `ORD-${yearStr}-${paddedSequence}`;
     
     const now = Date.now();
     
@@ -83,6 +100,39 @@ export const orderService = {
     return snapshot.docs.map(doc => doc.data() as Order);
   },
 
+  subscribeToRetailerOrders(retailerId: string, callback: (orders: Order[]) => void): () => void {
+    const q = query(
+      collection(db, 'orders'),
+      where('retailerId', '==', retailerId),
+      orderBy('createdAt', 'desc')
+    );
+    const unsubscribe = import('firebase/firestore').then(({ onSnapshot }) => {
+      return onSnapshot(q, (snapshot) => {
+        callback(snapshot.docs.map(doc => doc.data() as Order));
+      });
+    });
+    
+    return () => {
+      unsubscribe.then(unsub => unsub());
+    };
+  },
+
+  subscribeToOrder(orderId: string, callback: (order: Order | null) => void): () => void {
+    const docRef = doc(db, 'orders', orderId);
+    const unsubscribe = import('firebase/firestore').then(({ onSnapshot }) => {
+      return onSnapshot(docRef, (snapshot) => {
+        if (snapshot.exists()) {
+          callback(snapshot.data() as Order);
+        } else {
+          callback(null);
+        }
+      });
+    });
+    return () => {
+      unsubscribe.then(unsub => unsub());
+    };
+  },
+
   async getOrder(orderId: string): Promise<Order | null> {
     const docRef = doc(db, 'orders', orderId);
     const snapshot = await getDoc(docRef);
@@ -94,6 +144,18 @@ export const orderService = {
     const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => doc.data() as Order);
+  },
+
+  subscribeToAllOrders(callback: (orders: Order[]) => void): () => void {
+    const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
+    const unsubscribe = import('firebase/firestore').then(({ onSnapshot }) => {
+      return onSnapshot(q, (snapshot) => {
+        callback(snapshot.docs.map(doc => doc.data() as Order));
+      });
+    });
+    return () => {
+      unsubscribe.then(unsub => unsub());
+    };
   },
 
   async updateOrderStatus(orderId: string, oldStatus: OrderStatus, newStatus: OrderStatus, userId: string = 'Admin'): Promise<void> {

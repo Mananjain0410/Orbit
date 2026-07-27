@@ -27,15 +27,13 @@ export function AdminOrders() {
   const [isProcessingBulk, setIsProcessingBulk] = useState(false);
   const { showToast } = useToast();
 
-  const fetchOrders = () => {
-    setLoading(true);
-    orderService.getAllOrders()
-      .then(data => setOrders(data))
-      .finally(() => setLoading(false));
-  };
-
   useEffect(() => {
-    fetchOrders();
+    setLoading(true);
+    const unsubscribe = orderService.subscribeToAllOrders((data) => {
+      setOrders(data);
+      setLoading(false);
+    });
+    return () => unsubscribe();
   }, []);
 
   const filteredOrders = orders.filter(order => {
@@ -108,7 +106,6 @@ export function AdminOrders() {
       
       showToast(`Successfully updated ${selectedOrderIds.size} orders to ${targetStatus}`, 'success');
       setSelectedOrderIds(new Set());
-      fetchOrders();
     } catch (error) {
       console.error(error);
       showToast('Error performing bulk action', 'error');

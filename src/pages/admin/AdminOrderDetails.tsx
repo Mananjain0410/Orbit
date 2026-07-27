@@ -43,18 +43,21 @@ export function AdminOrderDetails() {
   const navigate = useNavigate();
   const { showToast } = useToast();
 
-  const fetchOrder = () => {
+  useEffect(() => {
+    let unsubscribe = () => {};
     if (id) {
-      orderService.getOrder(id).then(data => {
+      setLoading(true);
+      let isFirstLoad = true;
+      unsubscribe = orderService.subscribeToOrder(id, (data) => {
         setOrder(data);
-        if (data) setInternalNotes(data.internalNotes || '');
+        if (data && isFirstLoad) {
+          setInternalNotes(data.internalNotes || '');
+          isFirstLoad = false;
+        }
         setLoading(false);
       });
     }
-  };
-
-  useEffect(() => {
-    fetchOrder();
+    return () => unsubscribe();
   }, [id]);
 
   const handleSaveNotes = async () => {
@@ -87,7 +90,6 @@ export function AdminOrderDetails() {
         showToast(`Order status updated to ${newStatus}`, 'success');
       }
       
-      fetchOrder(); // Refresh to get timeline history
     } catch (error) {
       showToast('Failed to update order status', 'error');
     }
@@ -121,7 +123,6 @@ export function AdminOrderDetails() {
     try {
       await orderService.updateFulfillmentStatus(order.id, order.fulfillmentStatus, newStatus, 'Admin');
       showToast(`Fulfillment updated to ${newStatus}`, 'success');
-      fetchOrder(); // Refresh to get timeline history
     } catch (error) {
       showToast('Failed to update fulfillment', 'error');
     }

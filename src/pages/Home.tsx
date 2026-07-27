@@ -4,10 +4,13 @@ import { Link } from 'react-router';
 import { useStore } from '../contexts/StoreContext';
 import { SEO } from '../components/SEO';
 import { useSettings } from '../contexts/SettingsContext';
+import { useRetailer } from '../contexts/RetailerAuthContext';
 
 export function Home() {
   const { settings } = useSettings();
   const { categories } = useStore();
+  const { retailer } = useRetailer();
+
   
   const heroImages = settings.homepage?.heroImages || [
     "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?auto=format&fit=crop&q=80&w=2000"
@@ -52,12 +55,28 @@ export function Home() {
             {settings.storeInfo.aboutText}
           </p>
           <div className="flex gap-4">
-            <Link to="/category/lowers" className="bg-white text-foreground px-8 py-3 text-[11px] uppercase tracking-[1px] hover:bg-white/90 transition-colors font-medium">
-              Explore Collection
-            </Link>
-            <Link to="/login" className="bg-transparent border border-white text-white px-8 py-3 text-[11px] uppercase tracking-[1px] hover:bg-white hover:text-foreground transition-colors font-medium">
-              Partner With Us
-            </Link>
+            {retailer ? (
+              <>
+                <Link to="/category/lowers" className="bg-white text-foreground px-8 py-3 text-[11px] uppercase tracking-[1px] hover:bg-white/90 transition-colors font-medium">
+                  Browse Collection
+                </Link>
+                <Link to="/profile?tab=orders" className="bg-transparent border border-white text-white px-8 py-3 text-[11px] uppercase tracking-[1px] hover:bg-white hover:text-foreground transition-colors font-medium">
+                  My Orders
+                </Link>
+                <Link to="/profile" className="bg-transparent border border-white text-white px-8 py-3 text-[11px] uppercase tracking-[1px] hover:bg-white hover:text-foreground transition-colors font-medium">
+                  My Profile
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link to="/category/lowers" className="bg-white text-foreground px-8 py-3 text-[11px] uppercase tracking-[1px] hover:bg-white/90 transition-colors font-medium">
+                  Explore Collection
+                </Link>
+                <Link to="/login" className="bg-transparent border border-white text-white px-8 py-3 text-[11px] uppercase tracking-[1px] hover:bg-white hover:text-foreground transition-colors font-medium">
+                  Partner With Us
+                </Link>
+              </>
+            )}
           </div>
         </div>
 
@@ -160,16 +179,18 @@ export function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-32 px-4 text-center bg-foreground text-background">
-        <h2 className="font-serif text-4xl md:text-5xl mb-6">Ready to upgrade your inventory?</h2>
-        <p className="text-muted/70 mb-10 max-w-xl mx-auto font-light">
-          Join hundreds of premium retailers stocking MNFR. quality wear. 
-          Register today to access exclusive wholesale pricing.
-        </p>
-        <Link to="/login" className="bg-background text-foreground px-8 py-4 text-[11px] uppercase tracking-[1px] hover:bg-background/90 transition-colors font-medium">
-          Create Retailer Account
-        </Link>
-      </section>
+      {!retailer && (
+        <section className="py-32 px-4 text-center bg-foreground text-background">
+          <h2 className="font-serif text-4xl md:text-5xl mb-6">Ready to upgrade your inventory?</h2>
+          <p className="text-muted/70 mb-10 max-w-xl mx-auto font-light">
+            Join hundreds of premium retailers stocking MNFR. quality wear. 
+            Register today to access exclusive wholesale pricing.
+          </p>
+          <Link to="/login" className="bg-background text-foreground px-8 py-4 text-[11px] uppercase tracking-[1px] hover:bg-background/90 transition-colors font-medium">
+            Create Retailer Account
+          </Link>
+        </section>
+      )}
     </div>
   );
 }
