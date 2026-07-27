@@ -23,22 +23,24 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
 
-  const refreshData = async () => {
-    try {
-      const [fetchedProducts, fetchedCategories] = await Promise.all([
-        productService.getAllProducts(true),
-        categoryService.getAllCategories(true)
-      ]);
-      setProducts(fetchedProducts);
-      setCategories(fetchedCategories);
-    } catch (error) {
-      console.error("Error refreshing admin data:", error);
-    }
-  };
-
   useEffect(() => {
-    refreshData();
+    const unsubProducts = productService.subscribeToAllProducts(true, (fetchedProducts) => {
+      setProducts(fetchedProducts);
+    });
+
+    const unsubCategories = categoryService.subscribeToAllCategories(true, (fetchedCategories) => {
+      setCategories(fetchedCategories);
+    });
+
+    return () => {
+      unsubProducts();
+      unsubCategories();
+    };
   }, []);
+
+  const refreshData = async () => {
+    // Left for compatibility, but subscriptions handle the actual data flow
+  };
 
   const addProduct = async (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
     await productService.saveProduct(product as Partial<Product>);

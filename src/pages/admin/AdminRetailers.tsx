@@ -16,19 +16,12 @@ export function AdminRetailers() {
   const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
-    const fetchRetailers = async () => {
-      try {
-        setIsLoading(true);
-        const data = await retailerService.getAllRetailers();
-        setRetailersList(data);
-      } catch (err) {
-        setError('Failed to load retailers. Please try again later.');
-        console.error(err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchRetailers();
+    setIsLoading(true);
+    const unsubscribe = retailerService.subscribeToAllRetailers((data) => {
+      setRetailersList(data);
+      setIsLoading(false);
+    });
+    return () => unsubscribe();
   }, []);
   
   const retailers = retailersList.filter(r => {

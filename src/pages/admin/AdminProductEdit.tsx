@@ -53,6 +53,52 @@ export function AdminProductEdit() {
   };
 
   const handleSave = async (statusOverride?: 'Published' | 'Draft' | 'Hidden') => {
+    // Validations
+    if (!formData.patternNumber || formData.patternNumber.trim() === '') {
+      showError('Pattern Number is required');
+      return;
+    }
+
+    if (isNew) {
+      // Check for duplicate pattern number
+      const duplicate = products.find(p => p.patternNumber.toLowerCase() === formData.patternNumber?.toLowerCase());
+      if (duplicate) {
+        showError('Pattern Number already exists');
+        return;
+      }
+    } else {
+      const duplicate = products.find(p => p.id !== id && p.patternNumber.toLowerCase() === formData.patternNumber?.toLowerCase());
+      if (duplicate) {
+        showError('Pattern Number already exists');
+        return;
+      }
+    }
+
+    if (!formData.fabric || formData.fabric.trim() === '') {
+      showError('Product Name (Fabric) is required');
+      return;
+    }
+
+    if (!formData.categoryId) {
+      showError('Category is required');
+      return;
+    }
+
+    if (!formData.sizes || formData.sizes.length === 0) {
+      showError('At least one size is required');
+      return;
+    }
+
+    if (!formData.colors || formData.colors.length === 0) {
+      showError('At least one colour is required');
+      return;
+    }
+
+    if (!formData.images || formData.images.length === 0) {
+      // Just warn, don't block
+      console.warn('Product has no images. Retailers will not see any photos.');
+    }
+
     setIsSaving(true);
     
     const finalData = { 
@@ -60,19 +106,20 @@ export function AdminProductEdit() {
       ...(statusOverride ? { status: statusOverride } : {})
     };
 
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 600));
-
-    if (isNew) {
-      addProduct(finalData as any);
-      navigate('/admin/products');
-    } else {
-      updateProduct(id!, finalData);
-      setFormData(finalData);
-      setHasChanges(false);
+    try {
+      if (isNew) {
+        await addProduct(finalData as any);
+        navigate('/admin/products');
+      } else {
+        await updateProduct(id!, finalData);
+        setFormData(finalData);
+        setHasChanges(false);
+      }
+    } catch (error) {
+      showError('Failed to save product');
+    } finally {
+      setIsSaving(false);
     }
-    
-    setIsSaving(false);
   };
 
   // Color Management

@@ -18,22 +18,36 @@ export function RetailerAuthProvider({ children }: { children: React.ReactNode }
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user: User | null) => {
+    let unsubProfile = () => {};
+    const unsubscribeAuth = onAuthStateChanged(auth, (user: User | null) => {
+      unsubProfile(); // Clean up previous listener
       if (user && user.phoneNumber) {
-        try {
-          const profile = await retailerService.getRetailerById(user.uid);
-          setRetailer(profile);
-        } catch (error) {
-          console.error("Error fetching retailer profile on auth change:", error);
-          setRetailer(null);
-        }
+        // We need a real-time listener for the retailer profile status
+        import('firebase/firestore').then(({ doc, onSnapshot }) => {
+          const { db } = require('../firebase/config');
+          unsubProfile = onSnapshot(doc(db, 'retailers', user.uid), (snapshot) => {
+            if (snapshot.exists()) {
+              setRetailer({ uid: snapshot.id, ...(snapshot.data() as any) } as RetailerProfile);
+            } else {
+              setRetailer(null);
+            }
+            setLoading(false);
+          }, (error) => {
+            console.error("Error fetching retailer profile on auth change:", error);
+            setRetailer(null);
+            setLoading(false);
+          });
+        });
       } else {
         setRetailer(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribeAuth();
+      unsubProfile();
+    };
   }, []);
 
   const login = (profile: RetailerProfile) => {

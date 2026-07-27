@@ -17,24 +17,26 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        // Only fetch published products and categories for the retailer app
-        const [fetchedProducts, fetchedCategories] = await Promise.all([
-          productService.getAllProducts(false),
-          categoryService.getAllCategories(false)
-        ]);
-        setProducts(fetchedProducts);
-        setCategories(fetchedCategories);
-      } catch (error) {
-        console.error("Error fetching store data:", error);
-      } finally {
-        setIsLoading(false);
-      }
+    let productsLoaded = false;
+    let categoriesLoaded = false;
+    setIsLoading(true);
+
+    const unsubProducts = productService.subscribeToAllProducts(false, (fetchedProducts) => {
+      setProducts(fetchedProducts);
+      productsLoaded = true;
+      if (categoriesLoaded) setIsLoading(false);
+    });
+
+    const unsubCategories = categoryService.subscribeToAllCategories(false, (fetchedCategories) => {
+      setCategories(fetchedCategories);
+      categoriesLoaded = true;
+      if (productsLoaded) setIsLoading(false);
+    });
+
+    return () => {
+      unsubProducts();
+      unsubCategories();
     };
-    
-    fetchData();
   }, []);
 
   return (

@@ -3,6 +3,32 @@ import { db } from '../firebase/config';
 import { Category } from '../types';
 
 export const categoryService = {
+  subscribeToAllCategories(includeHidden: boolean = false, callback: (categories: Category[]) => void): () => void {
+    const categoriesRef = collection(db, 'categories');
+    let q;
+    if (!includeHidden) {
+      q = query(categoriesRef, where('status', '==', 'Published'));
+    } else {
+      q = query(categoriesRef, orderBy('displayOrder', 'asc'));
+    }
+    
+    let isSubscribed = true;
+    const unsubscribe = import('firebase/firestore').then(({ onSnapshot }) => {
+      return onSnapshot(q, (snapshot) => {
+        let categories = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as Category));
+        if (!includeHidden) {
+          categories.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+        }
+        if (isSubscribed) callback(categories);
+      });
+    });
+    
+    return () => {
+      isSubscribed = false;
+      unsubscribe.then(unsub => unsub());
+    };
+  },
+
   async getAllCategories(includeHidden: boolean = false): Promise<Category[]> {
     try {
       const categoriesRef = collection(db, 'categories');

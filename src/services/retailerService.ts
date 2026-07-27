@@ -82,6 +82,25 @@ export const retailerService = {
     }
   },
 
+  subscribeToAllRetailers(callback: (retailers: RetailerProfile[]) => void): () => void {
+    const retailersRef = collection(db, 'retailers');
+    const q = query(retailersRef, orderBy('createdAt', 'desc'));
+    
+    let isSubscribed = true;
+    const unsubscribe = import('firebase/firestore').then(({ onSnapshot }) => {
+      return onSnapshot(q, (snapshot) => {
+        if (isSubscribed) {
+          callback(snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as RetailerProfile)));
+        }
+      });
+    });
+    
+    return () => {
+      isSubscribed = false;
+      unsubscribe.then(unsub => unsub());
+    };
+  },
+
   async getAllRetailers(): Promise<RetailerProfile[]> {
     try {
       const retailersRef = collection(db, 'retailers');

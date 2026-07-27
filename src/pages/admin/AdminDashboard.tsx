@@ -1,6 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { SEO } from '../../components/SEO';
 import { useAdminAuth } from '../../contexts/AdminAuthContext';
+import { productService } from '../../services/productService';
+import { categoryService } from '../../services/categoryService';
+import { retailerService } from '../../services/retailerService';
+import { orderService } from '../../services/orderService';
 import { 
   Package, 
   Tags, 
@@ -28,7 +32,7 @@ function StatCard({ title, value, icon: Icon, trend, trendLabel }: any) {
       <div className="flex items-baseline gap-2">
         <span className="text-3xl font-semibold tracking-tight">{value}</span>
       </div>
-      {trend && (
+      {trend !== undefined && (
         <p className="text-xs text-neutral-500 mt-2 flex items-center gap-1">
           <span className={trend > 0 ? 'text-green-600' : 'text-neutral-500'}>
             {trend > 0 ? '+' : ''}{trend}
@@ -42,6 +46,38 @@ function StatCard({ title, value, icon: Icon, trend, trendLabel }: any) {
 
 export function AdminDashboard() {
   const { user } = useAdminAuth();
+  
+  const [stats, setStats] = useState({
+    products: 0,
+    categories: 0,
+    retailers: 0,
+    orders: 0
+  });
+
+  useEffect(() => {
+    const unsubProducts = productService.subscribeToAllProducts(true, (data) => {
+      setStats(s => ({ ...s, products: data.length }));
+    });
+    
+    const unsubCategories = categoryService.subscribeToAllCategories(true, (data) => {
+      setStats(s => ({ ...s, categories: data.length }));
+    });
+    
+    const unsubRetailers = retailerService.subscribeToAllRetailers((data) => {
+      setStats(s => ({ ...s, retailers: data.length }));
+    });
+    
+    const unsubOrders = orderService.subscribeToAllOrders((data) => {
+      setStats(s => ({ ...s, orders: data.filter(o => o.status === 'Pending').length }));
+    });
+
+    return () => {
+      unsubProducts();
+      unsubCategories();
+      unsubRetailers();
+      unsubOrders();
+    };
+  }, []);
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
@@ -49,16 +85,16 @@ export function AdminDashboard() {
       
       {/* Welcome Section */}
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight mb-1">Welcome back, {user?.name.split(' ')[0]}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight mb-1">Welcome back, {user?.name.split(' ')[0] || 'Admin'}</h1>
         <p className="text-neutral-500">Manage your wholesale business from one place.</p>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        <StatCard title="Total Products" value="124" icon={Package} trend={12} trendLabel="this month" />
-        <StatCard title="Total Categories" value="8" icon={Tags} />
-        <StatCard title="Total Retailers" value="45" icon={Users} trend={3} trendLabel="this week" />
-        <StatCard title="Pending Orders" value="12" icon={ShoppingCart} trend={0} trendLabel="requires action" />
+        <StatCard title="Total Products" value={stats.products} icon={Package} />
+        <StatCard title="Total Categories" value={stats.categories} icon={Tags} />
+        <StatCard title="Total Retailers" value={stats.retailers} icon={Users} />
+        <StatCard title="Pending Orders" value={stats.orders} icon={ShoppingCart} trendLabel="requires action" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">

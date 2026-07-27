@@ -3,6 +3,32 @@ import { db } from '../firebase/config';
 import { Product } from '../types';
 
 export const productService = {
+  subscribeToAllProducts(includeHidden: boolean = false, callback: (products: Product[]) => void): () => void {
+    const productsRef = collection(db, 'products');
+    let q;
+    if (!includeHidden) {
+      q = query(productsRef, where('status', '==', 'Published'));
+    } else {
+      q = query(productsRef, orderBy('createdAt', 'desc'));
+    }
+    
+    let isSubscribed = true;
+    const unsubscribe = import('firebase/firestore').then(({ onSnapshot }) => {
+      return onSnapshot(q, (snapshot) => {
+        let products = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as Product));
+        if (!includeHidden) {
+          products.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        }
+        if (isSubscribed) callback(products);
+      });
+    });
+    
+    return () => {
+      isSubscribed = false;
+      unsubscribe.then(unsub => unsub());
+    };
+  },
+
   async getAllProducts(includeHidden: boolean = false): Promise<Product[]> {
     try {
       const productsRef = collection(db, 'products');

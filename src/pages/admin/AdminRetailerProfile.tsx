@@ -7,33 +7,54 @@ import { orderService } from '../../services/orderService';
 import { Order } from '../../types';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { Spinner } from '../../components/ui/Spinner';
+import { useToast } from '../../components/ui/Toast';
 
 export function AdminRetailerProfile() {
   const { id } = useParams();
   const [retailer, setRetailer] = useState<RetailerProfile | null>(null);
-  useEffect(() => {
-    if(id) retailerService.getRetailerById(id).then(r => {
-       if(r) {
-           setRetailer(r);
-           setStatus(r.status);
-       }
-    });
-  }, [id]);
-  const [status, setStatus] = useState('active');
+  const [status, setStatus] = useState<'active' | 'pending' | 'suspended'>('active');
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
+  const { showToast } = useToast();
 
   useEffect(() => {
-    if (id) {
-      orderService.getRetailerOrders(id)
-        .then(data => setOrders(data))
-        .finally(() => setLoadingOrders(false));
+    if(id) {
+      retailerService.getRetailerById(id).then(r => { 
+        if(r) {
+          setRetailer(r);
+          setStatus(r.status);
+        }
+      });
     }
+  }, [id]);
+
+  useEffect(() => {
+    let unsubscribe = () => {};
+    if (id) {
+      unsubscribe = orderService.subscribeToRetailerOrders(id, (data) => {
+        setOrders(data);
+        setLoadingOrders(false);
+      });
+    }
+    return () => unsubscribe();
   }, [id]);
 
   if (!retailer) {
     return <div className="p-8 text-center">Retailer not found.</div>;
   }
+
+  const handleStatusChange = async (newStatus: 'active' | 'pending' | 'suspended') => {
+    if (!id) return;
+    try {
+      await retailerService.updateRetailerStatus(id, newStatus);
+      setStatus(newStatus);
+      setRetailer({ ...retailer, status: newStatus });
+      showToast(`Retailer status updated to ${newStatus}`, 'success');
+    } catch (error) {
+      console.error(error);
+      showToast('Failed to update retailer status', 'error');
+    }
+  };
 
   const getStatusBadge = (s: string) => {
     if (s === 'active') return <span className="px-3 py-1 bg-green-100 text-green-700 text-sm font-medium rounded-full">Active</span>;
@@ -43,11 +64,15 @@ export function AdminRetailerProfile() {
   };
 
   return (
-    <div className="p-8 max-w-6xl mx-auto space-y-8">
-      <div>
-        <Link to="/admin/retailers" className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-2 w-fit mb-4">
+    <div className="p-8 max-w-7xl mx-auto">
+      <div className="mb-8">
+        <Link
+          to="/admin/retailers"
+          className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-2 w-fit mb-4"
+        >
           <ArrowLeft className="w-4 h-4" /> Back to Retailers
         </Link>
+        
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-serif mb-1 flex items-center gap-3">
@@ -57,17 +82,22 @@ export function AdminRetailerProfile() {
               <User className="w-4 h-4" /> {retailer.ownerName}
             </p>
           </div>
+          
           <div className="flex gap-2">
-            <select 
+            <select
               className="h-10 px-3 py-2 bg-background border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               value={status}
-              onChange={(e) => setStatus(e.target.value)}
+              onChange={(e) => handleStatusChange(e.target.value as any)}
             >
               <option value="active">Active</option>
               <option value="pending">Pending</option>
               <option value="suspended">Blocked</option>
             </select>
-            <Button variant="outline" className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 hover:border-red-300">
+            <Button
+              variant="outline"
+              className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 hover:border-red-300"
+              onClick={() => handleStatusChange('suspended')}
+            >
               <ShieldAlert className="w-4 h-4 mr-2" /> Revoke Access
             </Button>
           </div>
@@ -173,22 +203,6 @@ export function AdminRetailerProfile() {
                   No orders placed by this retailer yet.
                 </div>
               )}
-            </div>
-          </div>
-
-          <div className="bg-card border border-border rounded-lg overflow-hidden">
-            <div className="px-6 py-5 border-b border-border flex items-center gap-2">
-              <FileText className="w-4 h-4 text-muted-foreground" />
-              <h2 className="font-medium">Internal Notes</h2>
-            </div>
-            <div className="p-6">
-              <textarea 
-                className="w-full min-h-[120px] rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" 
-                placeholder="Add private notes about this retailer..."
-              ></textarea>
-              <div className="flex justify-end mt-4">
-                <Button>Save Note</Button>
-              </div>
             </div>
           </div>
         </div>
