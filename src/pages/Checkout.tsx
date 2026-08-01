@@ -5,9 +5,16 @@ import { useRetailer } from '../contexts/RetailerAuthContext';
 import { orderService } from '../services/orderService';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { ArrowLeft, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, ShoppingBag, AlertTriangle, X } from 'lucide-react';
 import { useToast } from '../components/ui/Toast';
 import { SEO } from '../components/SEO';
+
+interface ExceededItem {
+  patternNumber: string;
+  colorName: string;
+  requested: number;
+  available: number;
+}
 
 export function Checkout() {
   const { items, totalSets, totalPrice, clearCart } = useCart();
@@ -16,6 +23,8 @@ export function Checkout() {
   const { showToast } = useToast();
   const [retailerNotes, setRetailerNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [stockWarnings, setStockWarnings] = useState<ExceededItem[]>([]);
+  const [showWarningModal, setShowWarningModal] = useState(false);
 
   if (items.length === 0) {
     return (
@@ -38,10 +47,7 @@ export function Checkout() {
     );
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (items.length === 0 || isSubmitting) return;
-    
+  const executeOrderCreation = async () => {
     setIsSubmitting(true);
     try {
       const orderItems = items.flatMap(item => 
@@ -72,6 +78,7 @@ export function Checkout() {
 
       const order = await orderService.createOrder(orderData);
       clearCart();
+      setShowWarningModal(false);
       navigate(`/order-confirmation/${order.id}`);
       showToast('Order request submitted successfully', 'success');
     } catch (error) {
@@ -80,6 +87,36 @@ export function Checkout() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (items.length === 0 || isSubmitting) return;
+
+    // Validate quantities against available stock
+    const warnings: ExceededItem[] = [];
+    items.forEach(item => {
+      item.selections.forEach(sel => {
+        const colorObj = item.product.colors.find(c => c.name === sel.name);
+        const available = typeof colorObj?.stock === 'number' ? colorObj.stock : 999;
+        if (sel.quantity > available) {
+          warnings.push({
+            patternNumber: item.product.patternNumber,
+            colorName: sel.name,
+            requested: sel.quantity,
+            available: available
+          });
+        }
+      });
+    });
+
+    if (warnings.length > 0) {
+      setStockWarnings(warnings);
+      setShowWarningModal(true);
+      return;
+    }
+
+    await executeOrderCreation();
   };
 
   return (
@@ -182,6 +219,59 @@ export function Checkout() {
           </div>
         </div>
       </div>
+
+      {/* Stock Warning Modal */}
+      {showWarningModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-background border border-border max-w-lg w-full p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+            <button 
+              onClick={() => setShowWarningModal(false)}
+              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 text-amber-600 mb-4">
+              <AlertTriangle className="w-6 h-6 shrink-0" />
+              <h3 className="font-serif text-xl font-bold text-foreground">Stock Exceeded Warning</h3>
+            </div>
+
+            <div className="space-y-3 my-4 bg-amber-50/50 border border-amber-200/60 p-4 rounded text-sm text-foreground">
+              {stockWarnings.map((w, idx) => (
+                <div key={idx} className="pb-2 border-b border-amber-200/40 last:border-0 last:pb-0">
+                  <p className="font-medium text-amber-950">
+                    You requested <span className="font-bold underline">{w.requested} sets</span> for <strong>{w.patternNumber} ({w.colorName})</strong>.
+                  </p>
+                  <p className="text-amber-800 text-xs mt-0.5">
+                    Only <span className="font-semibold">{w.available} sets</span> are currently available in stock.
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <p className="text-xs text-muted-foreground mb-6 leading-relaxed">
+              Your order request will still be submitted for approval. The manufacturer will decide whether to fulfill from upcoming production or accept partial fulfillment.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button 
+                onClick={executeOrderCreation}
+                disabled={isSubmitting}
+                className="flex-1 rounded-none text-[11px] uppercase tracking-[1px] h-12"
+              >
+                {isSubmitting ? 'Submitting...' : 'Continue & Submit Request'}
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={() => setShowWarningModal(false)}
+                className="flex-1 rounded-none text-[11px] uppercase tracking-[1px] h-12"
+              >
+                Go Back & Adjust
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

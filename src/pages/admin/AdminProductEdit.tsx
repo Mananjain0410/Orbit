@@ -61,13 +61,13 @@ export function AdminProductEdit() {
 
     if (isNew) {
       // Check for duplicate pattern number
-      const duplicate = products.find(p => p.patternNumber.toLowerCase() === formData.patternNumber?.toLowerCase());
+      const duplicate = products.find(p => p.patternNumber?.toLowerCase() === formData.patternNumber?.toLowerCase());
       if (duplicate) {
         showError('Pattern Number already exists');
         return;
       }
     } else {
-      const duplicate = products.find(p => p.id !== id && p.patternNumber.toLowerCase() === formData.patternNumber?.toLowerCase());
+      const duplicate = products.find(p => p.id !== id && p.patternNumber?.toLowerCase() === formData.patternNumber?.toLowerCase());
       if (duplicate) {
         showError('Pattern Number already exists');
         return;
@@ -94,15 +94,29 @@ export function AdminProductEdit() {
       return;
     }
 
-    if (!formData.images || formData.images.length === 0) {
-      // Just warn, don't block
-      console.warn('Product has no images. Retailers will not see any photos.');
+    // Check opening stock validity
+    for (const c of formData.colors) {
+      if (typeof c.stock === 'number' && c.stock < 0) {
+        showError(`Stock for colour ${c.name} cannot be negative`);
+        return;
+      }
+    }
+
+    if (statusOverride === 'Published' && (!formData.images || formData.images.length === 0)) {
+      showError('At least one product image is recommended before publishing');
     }
 
     setIsSaving(true);
     
+    // Auto-calculate openingInventory map
+    const openingInventory: Record<string, number> = {};
+    formData.colors.forEach(c => {
+      openingInventory[c.name] = typeof c.stock === 'number' ? c.stock : 0;
+    });
+
     const finalData = { 
       ...formData, 
+      openingInventory,
       ...(statusOverride ? { status: statusOverride } : {})
     };
 
@@ -125,12 +139,22 @@ export function AdminProductEdit() {
   // Color Management
   const [newColorName, setNewColorName] = useState('');
   const [newColorHex, setNewColorHex] = useState('#000000');
+  const [newColorStock, setNewColorStock] = useState<number>(100);
   
   const addColor = () => {
     if (newColorName && newColorHex) {
-      handleChange('colors', [...(formData.colors || []), { name: newColorName, hex: newColorHex }]);
+      handleChange('colors', [...(formData.colors || []), { name: newColorName, hex: newColorHex, stock: newColorStock }]);
       setNewColorName('');
       setNewColorHex('#000000');
+      setNewColorStock(100);
+    }
+  };
+
+  const updateColorStock = (index: number, stockVal: number) => {
+    const updatedColors = [...(formData.colors || [])];
+    if (updatedColors[index]) {
+      updatedColors[index] = { ...updatedColors[index], stock: Math.max(0, stockVal) };
+      handleChange('colors', updatedColors);
     }
   };
   
@@ -389,35 +413,60 @@ export function AdminProductEdit() {
                   </div>
                 </div>
 
-                {/* Colors */}
-                <div className="space-y-3 pt-4 border-t border-neutral-100">
-                  <label className="text-sm font-medium text-neutral-700">Available Colors</label>
-                  <div className="flex flex-wrap gap-3">
+                {/* Colors & Opening Stock */}
+                <div className="space-y-4 pt-4 border-t border-neutral-100">
+                  <label className="text-sm font-medium text-neutral-700">Available Colors & Opening Stock</label>
+                  <div className="space-y-2">
                     {formData.colors?.map((color, index) => (
-                      <div key={index} className="flex items-center gap-2 bg-neutral-100 border border-neutral-200 px-3 py-1.5 rounded-lg text-sm">
-                        <div className="w-4 h-4 rounded-full border border-neutral-300" style={{ backgroundColor: color.hex }}></div>
-                        <span>{color.name}</span>
-                        <button onClick={() => removeColor(index)} className="text-neutral-400 hover:text-red-500 ml-1">
-                          <X className="w-3.5 h-3.5" />
-                        </button>
+                      <div key={index} className="flex items-center justify-between gap-3 bg-neutral-50 border border-neutral-200 p-3 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 rounded-full border border-neutral-300 shadow-sm" style={{ backgroundColor: color.hex }}></div>
+                          <span className="font-medium text-sm">{color.name}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-1.5">
+                            <label className="text-xs text-neutral-500 font-medium">Opening Stock:</label>
+                            <Input 
+                              type="number"
+                              min="0"
+                              value={typeof color.stock === 'number' ? color.stock : 0} 
+                              onChange={e => updateColorStock(index, parseInt(e.target.value) || 0)} 
+                              className="w-24 h-8 text-xs text-right font-mono"
+                            />
+                            <span className="text-xs text-neutral-400">sets</span>
+                          </div>
+                          <button onClick={() => removeColor(index)} className="text-neutral-400 hover:text-red-500 p-1">
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
-                  <div className="flex gap-2 items-center">
+                  <div className="flex gap-2 items-center pt-2">
                     <input 
                       type="color" 
                       value={newColorHex} 
                       onChange={e => setNewColorHex(e.target.value)} 
-                      className="w-10 h-10 p-1 rounded border border-neutral-200 cursor-pointer"
+                      className="w-10 h-10 p-1 rounded border border-neutral-200 cursor-pointer shrink-0"
+                      title="Pick Colour"
                     />
                     <Input 
                       value={newColorName} 
                       onChange={e => setNewColorName(e.target.value)} 
-                      placeholder="Color Name" 
-                      className="max-w-[150px]"
+                      placeholder="Color Name (e.g. Navy)" 
+                      className="max-w-[160px]"
                       onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addColor())}
                     />
-                    <Button type="button" onClick={addColor} variant="outline" className="bg-white">Add Color</Button>
+                    <Input 
+                      type="number"
+                      min="0"
+                      value={newColorStock} 
+                      onChange={e => setNewColorStock(parseInt(e.target.value) || 0)} 
+                      placeholder="Opening Stock" 
+                      className="max-w-[130px] font-mono text-xs"
+                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addColor())}
+                    />
+                    <Button type="button" onClick={addColor} variant="outline" className="bg-white text-xs">Add Color</Button>
                   </div>
                 </div>
               </div>
@@ -527,10 +576,39 @@ export function AdminProductEdit() {
                 </label>
               </div>
               
-              <div className="pt-6 border-t border-neutral-100">
-                <p className="text-sm text-neutral-500 italic flex items-center gap-2">
-                  Detailed SKU-level inventory tracking will be available in Phase 3.
-                </p>
+              <div className="pt-6 border-t border-neutral-100 space-y-4">
+                <h3 className="text-sm font-medium text-neutral-900">Opening Stock Breakdown per Colour</h3>
+                {formData.colors && formData.colors.length > 0 ? (
+                  <div className="border border-neutral-200 rounded-lg overflow-hidden divide-y divide-neutral-200">
+                    {formData.colors.map((color, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-neutral-50 text-sm">
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded-full border border-neutral-300" style={{ backgroundColor: color.hex }}></div>
+                          <span className="font-medium">{color.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-neutral-500 font-medium">Opening Stock:</span>
+                          <Input 
+                            type="number"
+                            min="0"
+                            value={typeof color.stock === 'number' ? color.stock : 0} 
+                            onChange={e => updateColorStock(index, parseInt(e.target.value) || 0)} 
+                            className="w-24 h-8 text-xs text-right font-mono"
+                          />
+                          <span className="text-xs text-neutral-400">sets</span>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="p-3 bg-neutral-100 flex items-center justify-between font-medium text-sm">
+                      <span>Total Available Stock</span>
+                      <span className="font-mono text-neutral-900">
+                        {formData.colors.reduce((sum, c) => sum + (typeof c.stock === 'number' ? c.stock : 0), 0)} sets
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-amber-600">No colours added yet. Add colours under General Info tab to configure opening stock.</p>
+                )}
               </div>
             </div>
           )}

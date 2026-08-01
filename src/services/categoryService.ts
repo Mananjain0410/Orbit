@@ -1,6 +1,7 @@
-import { collection, doc, setDoc, getDoc, getDocs, query, orderBy, updateDoc, deleteDoc, where } from 'firebase/firestore';
+import { collection, doc, setDoc, getDoc, getDocs, query, updateDoc, deleteDoc, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { Category } from '../types';
+import { slugify } from '../lib/utils';
 
 export const categoryService = {
   subscribeToAllCategories(includeHidden: boolean = false, callback: (categories: Category[]) => void): () => void {
@@ -9,16 +10,21 @@ export const categoryService = {
     if (!includeHidden) {
       q = query(categoriesRef, where('status', '==', 'Published'));
     } else {
-      q = query(categoriesRef, orderBy('displayOrder', 'asc'));
+      q = categoriesRef as any;
     }
     
     let isSubscribed = true;
     const unsubscribe = import('firebase/firestore').then(({ onSnapshot }) => {
-      return onSnapshot(q, (snapshot) => {
-        let categories = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as Category));
-        if (!includeHidden) {
-          categories.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
-        }
+      return onSnapshot(q, (snapshot: any) => {
+        let categories = snapshot.docs.map((doc: any) => {
+          const data = doc.data();
+          const name = data.name || 'Category';
+          const computedSlug = slugify(name);
+          // Fix slug in memory if missing or mismatched
+          const slug = data.slug && data.slug !== 'lowers' || name.toLowerCase() === 'lowers' ? data.slug : computedSlug;
+          return { id: doc.id, ...data, slug } as Category;
+        });
+        categories.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
         if (isSubscribed) callback(categories);
       });
     });
@@ -37,16 +43,20 @@ export const categoryService = {
       if (!includeHidden) {
         q = query(categoriesRef, where('status', '==', 'Published'));
       } else {
-        q = query(categoriesRef, orderBy('displayOrder', 'asc'));
+        q = categoriesRef as any;
       }
       
       const snapshot = await getDocs(q);
       
-      let categories = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as Category));
+      let categories = snapshot.docs.map(doc => {
+        const data = doc.data() as Record<string, any>;
+        const name = data.name || 'Category';
+        const computedSlug = slugify(name);
+        const slug = data.slug && data.slug !== 'lowers' || name.toLowerCase() === 'lowers' ? data.slug : computedSlug;
+        return { id: doc.id, ...data, slug } as Category;
+      });
       
-      if (!includeHidden) {
-        categories.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
-      }
+      categories.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
       
       return categories;
     } catch (error) {
@@ -58,7 +68,7 @@ export const categoryService = {
   async getCategoryBySlug(slug: string): Promise<Category | null> {
     try {
       const categories = await this.getAllCategories(true);
-      return categories.find(c => c.slug === slug) || null;
+      return categories.find(c => c.slug === slug || slugify(c.name) === slug) || null;
     } catch (error) {
       console.error('Error fetching category by slug:', error);
       throw error;
@@ -71,18 +81,24 @@ export const categoryService = {
       const id = category.id || doc(categoriesRef).id;
       const docRef = doc(db, 'categories', id);
       
+      const categoryName = category.name || 'Category';
+      const slug = category.slug && category.slug !== 'lowers' || categoryName.toLowerCase() === 'lowers' 
+        ? category.slug 
+        : slugify(categoryName);
+
       if (category.id) {
         // Update
-        const updateData = { ...category };
+        const updateData = { ...category, slug };
         delete updateData.id;
         await updateDoc(docRef, updateData);
         
         const snapshot = await getDoc(docRef);
-        return { id, ...(snapshot.data() as any) } as Category;
+        return { id, ...(snapshot.data() as any), slug } as Category;
       } else {
         // Create
         const newData = {
           ...category,
+          slug,
           status: category.status || 'Published',
         };
         await setDoc(docRef, newData);

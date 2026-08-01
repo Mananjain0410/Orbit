@@ -42,26 +42,45 @@ export const PrintablePackingSheet = forwardRef<HTMLDivElement, PrintablePacking
             <th className="py-4 px-4 font-bold uppercase tracking-wider text-xs border-r border-black">Pattern Number</th>
             <th className="py-4 px-4 font-bold uppercase tracking-wider text-xs border-r border-black">Color</th>
             <th className="py-4 px-4 font-bold uppercase tracking-wider text-xs border-r border-black">Sizes Included</th>
-            <th className="py-4 px-4 font-bold uppercase tracking-wider text-xs text-center">Sets</th>
+            <th className="py-4 px-4 font-bold uppercase tracking-wider text-xs text-center border-r border-black">Req.</th>
+            <th className="py-4 px-4 font-bold uppercase tracking-wider text-xs text-center border-r border-black">To Pack</th>
+            <th className="py-4 px-4 font-bold uppercase tracking-wider text-xs text-center">Status</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-400">
-          {order.items.map((item, idx) => (
-            <tr key={idx} className="hover:bg-gray-50">
-              <td className="py-4 px-4 border-r border-black text-center">
-                <div className="w-6 h-6 border-2 border-black rounded-sm mx-auto" />
-              </td>
-              <td className="py-4 px-4 font-bold text-lg uppercase tracking-wider border-r border-black">{item.patternNumber}</td>
-              <td className="py-4 px-4 border-r border-black">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full border border-gray-400" style={{ backgroundColor: item.hex }} />
-                  <span className="font-medium text-base">{item.color}</span>
-                </div>
-              </td>
-              <td className="py-4 px-4 text-gray-600 border-r border-black font-medium">{item.sizes.join(', ')}</td>
-              <td className="py-4 px-4 text-center font-bold text-xl">{item.sets}</td>
-            </tr>
-          ))}
+          {order.items.map((item, idx) => {
+            const fulfilled = item.fulfilledSets !== undefined ? item.fulfilledSets : item.sets;
+            const pending = item.pendingSets !== undefined ? item.pendingSets : 0;
+
+            return (
+              <tr key={idx} className="hover:bg-gray-50">
+                <td className="py-4 px-4 border-r border-black text-center">
+                  <div className="w-6 h-6 border-2 border-black rounded-sm mx-auto" />
+                </td>
+                <td className="py-4 px-4 font-bold text-lg uppercase tracking-wider border-r border-black">{item.patternNumber}</td>
+                <td className="py-4 px-4 border-r border-black">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full border border-gray-400" style={{ backgroundColor: item.hex }} />
+                    <span className="font-medium text-base">{item.color}</span>
+                  </div>
+                </td>
+                <td className="py-4 px-4 text-gray-600 border-r border-black font-medium">{item.sizes.join(', ')}</td>
+                <td className="py-4 px-4 text-center font-bold text-base border-r border-black">{item.sets}</td>
+                <td className="py-4 px-4 text-center font-bold text-xl border-r border-black">{fulfilled}</td>
+                <td className="py-4 px-4 text-center font-semibold text-xs">
+                  {pending > 0 ? (
+                    <span className="text-amber-800 bg-amber-100 px-2 py-1 rounded border border-amber-300">
+                      Short ({pending} pending)
+                    </span>
+                  ) : (
+                    <span className="text-emerald-800 bg-emerald-100 px-2 py-1 rounded border border-emerald-300">
+                      Complete
+                    </span>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
 

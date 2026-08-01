@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Product, Category } from '../types';
 import { productService } from '../services/productService';
 import { categoryService } from '../services/categoryService';
+import { slugify } from '../lib/utils';
 
 interface AdminDataContextType {
   products: Product[];
@@ -69,13 +70,14 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addCategory = async (category: Omit<Category, 'id' | 'slug'>) => {
-    const slug = category.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const slug = slugify(category.name);
     await categoryService.saveCategory({ ...category, slug });
     await refreshData();
   };
 
   const updateCategory = async (id: string, updates: Partial<Category>) => {
-    await categoryService.saveCategory({ id, ...updates });
+    const slug = updates.name ? slugify(updates.name) : updates.slug;
+    await categoryService.saveCategory({ id, ...updates, ...(slug ? { slug } : {}) });
     await refreshData();
   };
 

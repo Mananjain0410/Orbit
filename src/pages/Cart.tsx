@@ -1,14 +1,47 @@
 import React, { useState } from 'react';
 import { Button } from '../components/ui/Button';
-import { ArrowRight, Trash2, ShoppingBag } from 'lucide-react';
+import { ArrowRight, Trash2, ShoppingBag, Bookmark, Check } from 'lucide-react';
 import { Link } from 'react-router';
 import { useCart } from '../contexts/CartContext';
 import { useStore } from '../contexts/StoreContext';
+import { useRetailer } from '../contexts/RetailerAuthContext';
+import { savedCartService } from '../services/savedCartService';
+import { useToast } from '../components/ui/Toast';
 import { SEO } from '../components/SEO';
+import { QuickReorder } from '../components/retailer/QuickReorder';
 
 export function Cart() {
   const { items, updateQuantity, removeColor, removeProduct, totalSets, totalPrice } = useCart();
   const { products, categories } = useStore();
+  const { retailer } = useRetailer();
+  const { showToast } = useToast();
+
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [cartName, setCartName] = useState('');
+  const [savingCart, setSavingCart] = useState(false);
+
+  const handleSaveCart = async () => {
+    if (!retailer) {
+      showToast('Please log in as a retailer to save your cart', 'error');
+      return;
+    }
+    if (!cartName.trim()) {
+      showToast('Please enter a name for this cart', 'error');
+      return;
+    }
+    setSavingCart(true);
+    try {
+      await savedCartService.saveCart(retailer.uid, cartName.trim(), items);
+      showToast('Cart saved successfully!', 'success');
+      setShowSaveModal(false);
+      setCartName('');
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to save cart', 'error');
+    } finally {
+      setSavingCart(false);
+    }
+  };
 
   // Recommendations: Just random items not in cart for now
   const recommendations = products.filter(p => !items.find(i => i.product.id === p.id)).slice(0, 4);
@@ -138,12 +171,24 @@ export function Cart() {
                 </p>
               </div>
               
-              <Button 
-                asChild
-                className="w-full rounded-none h-14 text-[11px] uppercase tracking-[2px] font-bold"
-              >
-                <Link to="/checkout">Review Order Request <ArrowRight className="ml-2 h-4 w-4" /></Link>
-              </Button>
+              <div className="space-y-3">
+                <Button 
+                  asChild
+                  className="w-full rounded-none h-14 text-[11px] uppercase tracking-[2px] font-bold"
+                >
+                  <Link to="/checkout">Review Order Request <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                </Button>
+
+                {retailer && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowSaveModal(true)}
+                    className="w-full rounded-none h-11 text-[10px] uppercase tracking-[2px] font-semibold border-border"
+                  >
+                    <Bookmark className="w-4 h-4 mr-2" /> Save Cart For Later
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -157,6 +202,44 @@ export function Cart() {
           <Button asChild className="rounded-none px-8 text-[11px] uppercase tracking-[2px] font-bold h-12">
             <Link to="/">Browse Catalog</Link>
           </Button>
+        </div>
+      )}
+
+      {/* Quick Reorder Section for Retailers */}
+      {retailer && <QuickReorder />}
+
+      {/* Save Cart Modal */}
+      {showSaveModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-background border border-border p-6 max-w-md w-full shadow-2xl rounded-lg">
+            <h3 className="font-serif text-2xl mb-2">Save Cart</h3>
+            <p className="text-xs text-muted-foreground mb-6">
+              Give this cart selection a name (e.g. "Summer Collection Order", "Main Store Restock"). You can reload it anytime from your Profile.
+            </p>
+            <input
+              type="text"
+              placeholder="e.g., Festival Rush Order 2026"
+              value={cartName}
+              onChange={(e) => setCartName(e.target.value)}
+              className="w-full h-11 border border-input rounded-md px-3 text-sm mb-6 focus:outline-none focus:ring-1 focus:ring-accent bg-background"
+            />
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="ghost"
+                onClick={() => setShowSaveModal(false)}
+                className="text-xs uppercase tracking-wider"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveCart}
+                disabled={savingCart}
+                className="text-xs uppercase tracking-wider px-6 font-bold"
+              >
+                {savingCart ? 'Saving...' : 'Save Cart'}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 

@@ -93,22 +93,31 @@ export const orderService = {
   async getRetailerOrders(retailerId: string): Promise<Order[]> {
     const q = query(
       collection(db, 'orders'),
-      where('retailerId', '==', retailerId),
-      orderBy('createdAt', 'desc')
+      where('retailerId', '==', retailerId)
     );
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => doc.data() as Order);
+    const orders = snapshot.docs.map(doc => doc.data() as Order);
+    return orders.sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA;
+    });
   },
 
   subscribeToRetailerOrders(retailerId: string, callback: (orders: Order[]) => void): () => void {
     const q = query(
       collection(db, 'orders'),
-      where('retailerId', '==', retailerId),
-      orderBy('createdAt', 'desc')
+      where('retailerId', '==', retailerId)
     );
     const unsubscribe = import('firebase/firestore').then(({ onSnapshot }) => {
       return onSnapshot(q, (snapshot) => {
-        callback(snapshot.docs.map(doc => doc.data() as Order));
+        const orders = snapshot.docs.map(doc => doc.data() as Order);
+        orders.sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return dateB - dateA;
+        });
+        callback(orders);
       });
     });
     
@@ -167,6 +176,21 @@ export const orderService = {
       throw new Error(`Cannot change status of a ${oldStatus} order.`);
     }
 
+    // Handle Inventory Deduction/Restoration based on order status
+    const { inventoryService } = await import('./inventoryService');
+    
+    if (newStatus === 'Confirmed') {
+      const result = await inventoryService.deductInventoryTransaction(orderId, userId);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to deduct inventory for order confirmation.');
+      }
+    } else if (['Pending', 'On Hold', 'Rejected', 'Cancelled'].includes(newStatus)) {
+      const result = await inventoryService.restoreInventoryTransaction(orderId, userId);
+      if (!result.success) {
+        console.warn('Inventory restore warning:', result.error);
+      }
+    }
+
     const historyEntry: OrderStatusHistory = {
       previousStatus: oldStatus,
       newStatus,
@@ -202,7 +226,7 @@ export const orderService = {
           message = `Your order ${order.orderNumber} has been cancelled/rejected.`;
           break;
         default:
-          return; // No notification for other generic updates
+          return;
       }
       
       await notificationService.createNotification({
@@ -217,11 +241,6 @@ export const orderService = {
   
   async updateFulfillmentStatus(orderId: string, oldStatus: FulfillmentStatus, newStatus: FulfillmentStatus, userId: string = 'Admin'): Promise<void> {
     const docRef = doc(db, 'orders', orderId);
-
-    // Validate Transition
-    if (oldStatus === 'Delivered') {
-      throw new Error(`Cannot change fulfillment status of a Delivered order.`);
-    }
 
     const historyEntry: OrderStatusHistory = {
       previousStatus: oldStatus,
@@ -248,17 +267,9 @@ export const orderService = {
           title = 'Order Packed';
           message = `Your order ${order.orderNumber} has been packed.`;
           break;
-        case 'Ready for Dispatch':
-          title = 'Order Ready for Dispatch';
-          message = `Your order ${order.orderNumber} is ready for dispatch.`;
-          break;
         case 'Dispatched':
           title = 'Order Dispatched';
           message = `Your order ${order.orderNumber} has been dispatched.`;
-          break;
-        case 'Delivered':
-          title = 'Order Delivered';
-          message = `Your order ${order.orderNumber} has been delivered.`;
           break;
         default:
           return;

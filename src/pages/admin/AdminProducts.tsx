@@ -195,7 +195,7 @@ export function AdminProducts() {
               {filteredProducts.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="px-4 py-12 text-center text-neutral-500">
-                    No products found matching your criteria.
+                    No products created yet.
                   </td>
                 </tr>
               ) : (

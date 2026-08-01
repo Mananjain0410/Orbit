@@ -5,7 +5,6 @@ service cloud.firestore {
     
     // Admin checking function
     function isAdmin() {
-      // Admin users have an admin role or are recorded in admins collection
       return request.auth != null && (
         request.auth.token.email.matches('.*@mnfr\\.in$') || 
         exists(/databases/$(database)/documents/admins/$(request.auth.uid))
@@ -19,44 +18,60 @@ service cloud.firestore {
 
     // Orders Collection
     match /orders/{orderId} {
-      // Retailers can read their own orders and create new ones
-      allow read, create: if isAdmin() || (request.resource.data.retailerId == request.auth.uid);
-      // Only admins can update or delete
+      // Retailers can read their own orders and create new ones assigned to themselves
+      allow read: if isAdmin() || (resource != null && resource.data.retailerId == request.auth.uid);
+      allow create: if isAdmin() || (request.resource.data.retailerId == request.auth.uid);
+      // Only admins can update or delete orders
       allow update, delete: if isAdmin();
     }
 
     // Notifications Collection
     match /notifications/{notificationId} {
-      // Users can read and update their own notifications
-      allow read, update: if isAdmin() || resource.data.userId == request.auth.uid;
-      // Admins can create notifications
+      allow read, update: if isAdmin() || (resource != null && resource.data.userId == request.auth.uid);
       allow create, delete: if isAdmin();
     }
 
     // Settings Collection
     match /system/{document} {
-      // Anyone can read settings (for homepage, footer, etc.)
       allow read: if true;
-      // Only admins can update settings
       allow write: if isAdmin();
     }
     
     // Products Collection
     match /products/{productId} {
-      allow read: if isAdmin() || (resource.data.status == 'Published' || !exists(/databases/$(database)/documents/products/$(productId)));
+      allow read: if true;
       allow write: if isAdmin();
     }
 
     // Categories Collection
     match /categories/{categoryId} {
-      allow read: if isAdmin() || (resource.data.status == 'Published' || !exists(/databases/$(database)/documents/categories/$(categoryId)));
+      allow read: if true;
       allow write: if isAdmin();
     }
     
     // Retailers Collection
     match /retailers/{userId} {
       allow read: if isAdmin() || isRetailer(userId);
-      allow write: if isAdmin() || isRetailer(userId);
+      allow create: if isRetailer(userId);
+      allow update: if isAdmin() || (isRetailer(userId) && request.resource.data.role == resource.data.role);
+      allow delete: if isAdmin();
+    }
+
+    // Inventory Collection
+    match /inventory/{itemId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Media Library Collection
+    match /media/{mediaId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Audit Logs Collection
+    match /audit_logs/{logId} {
+      allow read, write: if isAdmin();
     }
   }
 }

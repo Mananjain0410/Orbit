@@ -122,7 +122,6 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
 
         <div className="flex justify-between items-center mt-1 pt-2 border-t border-border">
           <span className="text-[13px] font-semibold">₹{product.price.toFixed(2)}</span>
-          <span className="text-[9px] px-2 py-0.5 border border-border text-foreground/70 rounded-sm uppercase tracking-wider">Pack of 12</span>
         </div>
       </div>
     </Link>

@@ -14,11 +14,16 @@ export interface User {
   status: 'active' | 'pending' | 'suspended';
 }
 
+export type Retailer = User;
+
 export interface Category {
   id: string;
   name: string;
   slug: string;
   image?: string;
+  thumbnail?: string;
+  displayImage?: string;
+  mobileImage?: string;
   description?: string;
   displayOrder?: number;
   status?: 'Published' | 'Hidden';
@@ -34,7 +39,10 @@ export interface Product {
   id: string;
   patternNumber: string;
   categoryId: string;
+  categoryName?: string;
   fabric: string;
+  fit?: string;
+  length?: string;
   colors: ProductColor[];
   price: number;
   sizes: string[];
@@ -44,11 +52,25 @@ export interface Product {
   keywords: string[];
   createdAt: number;
   updatedAt: number;
-  status?: 'Published' | 'Draft' | 'Hidden';
+  status?: 'Published' | 'Draft' | 'Hidden' | 'Archived';
+  openingInventory?: Record<string, number>;
+}
+
+export interface InventoryRecord {
+  id: string;
+  productId: string;
+  patternNumber: string;
+  color: string;
+  hex: string;
+  currentStock: number;
+  reservedStock: number;
+  availableStock: number;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export type OrderStatus = 'Pending' | 'Confirmed' | 'Rejected' | 'On Hold' | 'Cancelled';
-export type FulfillmentStatus = 'Not Started' | 'Picking' | 'Packed' | 'Ready for Dispatch' | 'Dispatched' | 'Delivered';
+export type FulfillmentStatus = 'Not Started' | 'Partial Fulfillment' | 'Packed' | 'Dispatched' | 'Delivered';
 
 export interface OrderStatusHistory {
   previousStatus: OrderStatus | FulfillmentStatus | null;
@@ -64,6 +86,9 @@ export interface OrderItem {
   color: string;
   hex: string;
   sets: number;
+  fulfilledSets?: number;
+  pendingSets?: number;
+  unfulfilledReason?: string;
   sizes: string[];
   price: number;
   image: string;
@@ -82,6 +107,7 @@ export interface Order {
   fulfillmentStatus: FulfillmentStatus;
   statusHistory: OrderStatusHistory[];
   inventoryDeducted?: boolean;
+  isPartialFulfillment?: boolean;
   totalProducts: number;
   totalColors: number;
   totalSets: number;

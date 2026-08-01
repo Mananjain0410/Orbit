@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Product } from '../types';
 import { useStore } from '../contexts/StoreContext';
 
@@ -25,15 +25,16 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('mnfr_favorites', JSON.stringify(favoriteIds));
   }, [favoriteIds]);
 
-  const addFavorite = (product: Product) => {
+  const addFavorite = useCallback((product: Product) => {
+    if (!product || !product.id) return;
     setFavoriteIds(prev => prev.includes(product.id) ? prev : [...prev, product.id]);
-  };
+  }, []);
 
-  const removeFavorite = (productId: string) => {
+  const removeFavorite = useCallback((productId: string) => {
     setFavoriteIds(prev => prev.filter(id => id !== productId));
-  };
+  }, []);
 
-  const isFavorite = (productId: string) => favoriteIds.includes(productId);
+  const isFavorite = useCallback((productId: string) => favoriteIds.includes(productId), [favoriteIds]);
 
   const { products } = useStore();
   const favorites = products.filter(p => favoriteIds.includes(p.id));

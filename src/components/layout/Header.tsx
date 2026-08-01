@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, ShoppingCart, User, Menu, X, ArrowRight } from 'lucide-react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useLocation } from 'react-router';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { motion, AnimatePresence } from 'motion/react';
@@ -8,17 +8,27 @@ import { useCart } from '../../contexts/CartContext';
 import { useRetailer } from '../../contexts/RetailerAuthContext';
 import { NotificationBell } from '../notifications/NotificationBell';
 import { useStore } from '../../contexts/StoreContext';
+import { useSettings } from '../../contexts/SettingsContext';
+import { getCategoryUrl } from '../../lib/utils';
 
 export function Header() {
+  const { settings } = useSettings();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const { totalSets } = useCart();
   const { retailer } = useRetailer();
   const { products, categories } = useStore();
+
+  const isHome = location.pathname === '/';
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname, location.search]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -38,6 +48,15 @@ export function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const handleSearchSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/category/all?q=${encodeURIComponent(searchQuery.trim())}`);
+      setIsSearchFocused(false);
+      setMobileMenuOpen(false);
+    }
+  };
+
   const searchResults = searchQuery.trim() === '' ? [] : products.filter(product => {
     const query = searchQuery.toLowerCase();
     return (
@@ -51,7 +70,7 @@ export function Header() {
     <>
       <header 
         className={`fixed top-0 z-50 w-full transition-all duration-300 ${
-          isScrolled 
+          isScrolled || !isHome 
             ? 'bg-background border-b border-border shadow-sm py-2' 
             : 'bg-transparent py-4 text-foreground'
         }`}
@@ -65,12 +84,18 @@ export function Header() {
               <span className="sr-only">Toggle menu</span>
             </Button>
             <Link to="/" className="flex items-center space-x-2">
-              <span className="font-serif font-bold text-2xl tracking-tighter uppercase hidden sm:inline-block">
-                MNFR.
-              </span>
-              <span className="font-serif font-bold text-2xl tracking-tighter uppercase sm:hidden">
-                M.
-              </span>
+              {settings.storeInfo.logoUrl ? (
+                <img src={settings.storeInfo.logoUrl} alt={settings.storeInfo.name} className="h-8 md:h-10 max-w-[180px] object-contain" />
+              ) : (
+                <>
+                  <span className="font-serif font-bold text-2xl tracking-tighter uppercase hidden sm:inline-block">
+                    {settings.storeInfo.name || 'MNFR Wholesale'}
+                  </span>
+                  <span className="font-serif font-bold text-2xl tracking-tighter uppercase sm:hidden">
+                    {settings.storeInfo.name ? settings.storeInfo.name.substring(0, 4) : 'MNFR'}
+                  </span>
+                </>
+              )}
             </Link>
           </div>
 
@@ -79,7 +104,7 @@ export function Header() {
             {categories.map((cat) => (
               <Link 
                 key={cat.id} 
-                to={`/category/${cat.slug}`} 
+                to={getCategoryUrl(cat)} 
                 className="transition-opacity opacity-60 hover:opacity-100 text-current border-b border-transparent hover:border-current pb-0.5"
               >
                 {cat.name}
@@ -90,15 +115,17 @@ export function Header() {
           {/* Right Actions */}
           <div className="flex items-center justify-end space-x-4 flex-1 md:w-1/3 text-current">
             <div className="hidden sm:block w-full max-w-xs relative" ref={searchRef}>
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 opacity-70" />
-              <Input
-                type="search"
-                placeholder="Search catalog..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={() => setIsSearchFocused(true)}
-                className="w-full bg-muted/50 pl-9 rounded-sm border-none focus-visible:ring-1 text-xs text-foreground"
-              />
+              <form onSubmit={handleSearchSubmit}>
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 opacity-70" />
+                <Input
+                  type="search"
+                  placeholder="Search catalog..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => setIsSearchFocused(true)}
+                  className="w-full bg-muted/50 pl-9 rounded-sm border-none focus-visible:ring-1 text-xs text-foreground"
+                />
+              </form>
               
               {/* Search Dropdown */}
               <AnimatePresence>
@@ -241,7 +268,7 @@ export function Header() {
                 {categories.map((cat) => (
                   <Link 
                     key={cat.id} 
-                    to={`/category/${cat.slug}`} 
+                    to={getCategoryUrl(cat)} 
                     onClick={() => setMobileMenuOpen(false)}
                     className="text-lg font-serif italic tracking-wide"
                   >

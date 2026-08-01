@@ -1,23 +1,34 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router';
 import { SEO } from '../../components/SEO';
 import { useAdminData } from '../../contexts/AdminDataContext';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { 
-  Plus, Search, Edit2, Trash2, Image as ImageIcon, Check, X, GripVertical
-} from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Image as ImageIcon, Upload, Save, X, Check } from 'lucide-react';
 import { Category } from '../../types';
+import { uploadService } from '../../services/uploadService';
+import { auditLogService } from '../../services/auditLogService';
+import { useToast } from '../../components/ui/Toast';
 
 export function AdminCategories() {
   const { categories, products, updateCategory, addCategory, deleteCategory } = useAdminData();
   const [searchTerm, setSearchTerm] = useState('');
+  const { showToast } = useToast();
   
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Category>>({});
   
   const [isAdding, setIsAdding] = useState(false);
-  const [addForm, setAddForm] = useState<Partial<Category>>({ name: '', description: '', status: 'Published' });
+  const [addForm, setAddForm] = useState<Partial<Category>>({ 
+    name: '', 
+    description: '', 
+    status: 'Published',
+    image: '',
+    thumbnail: '',
+    displayImage: '',
+    mobileImage: ''
+  });
+
+  const [uploadingField, setUploadingField] = useState<string | null>(null);
 
   const filteredCategories = categories.filter(c => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -27,83 +38,101 @@ export function AdminCategories() {
     return products.filter(p => p.categoryId === categoryId).length;
   };
 
-  const startEdit = (cat: Category) => {
-    setIsEditing(cat.id);
-    setEditForm(cat);
+  const handleImageUpload = async (
+    file: File, 
+    field: 'image' | 'thumbnail' | 'displayImage' | 'mobileImage',
+    isEdit: boolean
+  ) => {
+    const validation = uploadService.validateImageFile(file);
+    if (!validation.valid) {
+      showToast(validation.error || 'Invalid file format.', 'error');
+      return;
+    }
+
+    setUploadingField(`${isEdit ? 'edit' : 'add'}_${field}`);
+    showToast(`Uploading ${field} to Firebase Storage...`, 'info');
+
+    try {
+      const url = await uploadService.uploadImage(file, 'categories');
+      if (isEdit) {
+        const oldUrl = editForm[field];
+        setEditForm(prev => ({ ...prev, [field]: url }));
+        if (oldUrl && oldUrl !== url) {
+          await uploadService.deleteImage(oldUrl);
+        }
+      } else {
+        setAddForm(prev => ({ ...prev, [field]: url }));
+      }
+      showToast(`${field} uploaded successfully!`, 'success');
+    } catch (err) {
+      console.error(`Failed to upload ${field}:`, err);
+      showToast(`Upload failed for ${field}.`, 'error');
+    } finally {
+      setUploadingField(null);
+    }
   };
 
-  const saveEdit = () => {
+  const startEdit = (cat: Category) => {
+    setIsEditing(cat.id);
+    setEditForm({ ...cat });
+  };
+
+  const saveEdit = async () => {
     if (isEditing && editForm.name) {
-      updateCategory(isEditing, editForm);
+      const oldCat = categories.find(c => c.id === isEditing);
+      await updateCategory(isEditing, editForm);
+      await auditLogService.logAction('category_edited', `Updated category: ${editForm.name}`, isEditing, oldCat, editForm);
+      showToast('Category updated and synced!', 'success');
       setIsEditing(null);
     }
   };
 
-  const saveAdd = () => {
+  const saveAdd = async () => {
     if (addForm.name) {
-      addCategory(addForm as any);
+      await addCategory(addForm as any);
+      await auditLogService.logAction('category_created', `Created new category: ${addForm.name}`, '', null, addForm);
+      showToast('Category created and added to catalog!', 'success');
       setIsAdding(false);
-      setAddForm({ name: '', description: '', status: 'Published' });
+      setAddForm({ name: '', description: '', status: 'Published', image: '', thumbnail: '', displayImage: '', mobileImage: '' });
     }
   };
 
-  const handleDelete = (cat: Category) => {
+  const handleDelete = async (cat: Category) => {
     const count = getProductCount(cat.id);
     if (count > 0) {
-      alert(`Cannot delete category "${cat.name}" because it contains ${count} products. Please reassign or delete the products first, or change the category status to Hidden.`);
+      alert(`Cannot delete category "${cat.name}" because it contains ${count} products. Please reassign or delete products first.`);
       return;
     }
     if (window.confirm(`Are you sure you want to delete category "${cat.name}"?`)) {
-      deleteCategory(cat.id);
+      await deleteCategory(cat.id);
+      await auditLogService.logAction('category_deleted', `Deleted category: ${cat.name}`, cat.id);
+      if (cat.image) await uploadService.deleteImage(cat.image);
+      if (cat.thumbnail) await uploadService.deleteImage(cat.thumbnail);
+      if (cat.displayImage) await uploadService.deleteImage(cat.displayImage);
+      if (cat.mobileImage) await uploadService.deleteImage(cat.mobileImage);
+      showToast('Category deleted.', 'success');
     }
   };
 
-  const moveUp = (index: number) => {
-    if (index === 0) return;
-    const items = [...filteredCategories];
-    const current = items[index];
-    const prev = items[index - 1];
-    
-    // Swap display order
-    const temp = current.displayOrder;
-    updateCategory(current.id, { displayOrder: prev.displayOrder });
-    updateCategory(prev.id, { displayOrder: temp });
-  };
-
-  const moveDown = (index: number) => {
-    if (index === filteredCategories.length - 1) return;
-    const items = [...filteredCategories];
-    const current = items[index];
-    const next = items[index + 1];
-    
-    // Swap display order
-    const temp = current.displayOrder;
-    updateCategory(current.id, { displayOrder: next.displayOrder });
-    updateCategory(next.id, { displayOrder: temp });
-  };
-
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
+    <div className="space-y-6 max-w-6xl mx-auto p-4 md:p-6">
       <SEO title="Categories - Business Portal" />
 
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Categories</h1>
-          <p className="text-sm text-neutral-500 mt-1">Organize your products into collections.</p>
+          <h1 className="text-3xl font-serif font-bold tracking-tight">Category Thumbnail Manager</h1>
+          <p className="text-sm text-muted-foreground mt-1">Manage collection graphics, thumbnails, display images, and mobile banners.</p>
         </div>
-        <Button 
-          onClick={() => setIsAdding(true)}
-          className="bg-neutral-900 hover:bg-neutral-800 text-white shadow-sm flex items-center gap-2"
-        >
+        <Button onClick={() => setIsAdding(true)} className="flex items-center gap-2 uppercase tracking-[1px] font-bold">
           <Plus className="w-4 h-4" /> Add Category
         </Button>
       </div>
 
-      <div className="bg-white p-4 border border-neutral-200 rounded-xl shadow-sm">
+      <div className="bg-card p-4 border border-border rounded-xl">
         <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input 
-            placeholder="Search categories..." 
+            placeholder="Search categories by name..." 
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             className="pl-9 h-10"
@@ -112,89 +141,111 @@ export function AdminCategories() {
       </div>
 
       {isAdding && (
-        <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-6 shadow-sm">
-          <h3 className="font-medium mb-4">Add New Category</h3>
+        <div className="bg-card border border-border rounded-xl p-6 shadow-sm space-y-6">
+          <h3 className="font-bold text-lg border-b border-border pb-3">Add New Category</h3>
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-neutral-700">Category Name *</label>
+              <label className="text-xs font-bold uppercase text-muted-foreground">Category Name *</label>
               <Input 
                 value={addForm.name} 
                 onChange={e => setAddForm({ ...addForm, name: e.target.value })} 
-                placeholder="e.g. Kurta Sets"
-                autoFocus
+                placeholder="e.g. Trackpants & Lowers"
               />
             </div>
+
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-neutral-700">Status</label>
+              <label className="text-xs font-bold uppercase text-muted-foreground">Status</label>
               <select 
                 value={addForm.status}
                 onChange={e => setAddForm({ ...addForm, status: e.target.value as any })}
-                className="w-full h-10 px-3 rounded-lg border border-neutral-200 text-sm focus:ring-2 focus:ring-neutral-900 bg-white"
+                className="w-full h-10 px-3 rounded-lg border border-input text-sm bg-background"
               >
                 <option value="Published">Published</option>
                 <option value="Hidden">Hidden</option>
               </select>
             </div>
+
             <div className="space-y-1.5 md:col-span-2">
-              <label className="text-sm font-medium text-neutral-700">Description</label>
+              <label className="text-xs font-bold uppercase text-muted-foreground">Description</label>
               <Input 
                 value={addForm.description || ''} 
                 onChange={e => setAddForm({ ...addForm, description: e.target.value })} 
-                placeholder="Brief description for SEO..."
+                placeholder="Short description for retailer navigation..."
               />
             </div>
           </div>
-          <div className="flex gap-2 mt-6 justify-end">
-            <Button variant="outline" onClick={() => setIsAdding(false)} className="bg-white">Cancel</Button>
-            <Button onClick={saveAdd} disabled={!addForm.name} className="bg-neutral-900 text-white hover:bg-neutral-800">
+
+          {/* Category Images Management */}
+          <div className="border-t border-border pt-4">
+            <h4 className="text-xs font-bold uppercase tracking-[1px] mb-3 text-foreground">Category Images & Graphics</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+              {(['image', 'thumbnail', 'displayImage', 'mobileImage'] as const).map(field => (
+                <div key={field} className="border border-border rounded-lg p-3 bg-muted/20 space-y-2">
+                  <span className="text-[10px] font-bold uppercase tracking-[1px] text-muted-foreground block capitalize">{field.replace(/([A-Z])/g, ' $1')}</span>
+                  <div className="aspect-video bg-muted rounded overflow-hidden relative border border-border flex items-center justify-center">
+                    {addForm[field] ? (
+                      <img src={addForm[field]} alt={field} className="w-full h-full object-cover" />
+                    ) : (
+                      <ImageIcon className="w-6 h-6 text-muted-foreground/40" />
+                    )}
+                  </div>
+                  <label className="cursor-pointer bg-background border border-input hover:bg-muted text-xs py-1.5 px-3 rounded w-full flex items-center justify-center gap-1.5 font-medium">
+                    <Upload className="w-3.5 h-3.5" /> 
+                    {uploadingField === `add_${field}` ? 'Uploading...' : 'Choose File'}
+                    <input 
+                      type="file" 
+                      accept="image/png, image/jpeg, image/jpg, image/webp" 
+                      onChange={e => e.target.files?.[0] && handleImageUpload(e.target.files[0], field, false)} 
+                      className="hidden" 
+                    />
+                  </label>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-2 justify-end border-t border-border">
+            <Button variant="outline" onClick={() => setIsAdding(false)}>Cancel</Button>
+            <Button onClick={saveAdd} disabled={!addForm.name} className="uppercase tracking-[1px] font-bold">
               Save Category
             </Button>
           </div>
         </div>
       )}
 
-      <div className="bg-white border border-neutral-200 rounded-xl shadow-sm overflow-hidden">
+      {/* Categories List */}
+      <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm whitespace-nowrap">
-            <thead className="bg-neutral-50 text-neutral-500 border-b border-neutral-200">
+          <table className="w-full text-left text-xs whitespace-nowrap">
+            <thead className="bg-muted/50 text-muted-foreground font-bold uppercase tracking-[0.5px]">
               <tr>
-                <th className="px-4 py-3 w-16 text-center">Order</th>
-                <th className="px-4 py-3 font-medium">Image</th>
-                <th className="px-4 py-3 font-medium">Name</th>
-                <th className="px-4 py-3 font-medium">Products</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium text-right">Actions</th>
+                <th className="px-4 py-3">Thumbnail</th>
+                <th className="px-4 py-3">Category Name</th>
+                <th className="px-4 py-3">Display & Mobile Assets</th>
+                <th className="px-4 py-3">Products</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-100">
+            <tbody className="divide-y divide-border">
               {filteredCategories.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-neutral-500">
+                  <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
                     No categories found.
                   </td>
                 </tr>
               ) : (
-                filteredCategories.map((cat, index) => (
-                  <tr key={cat.id} className="hover:bg-neutral-50 group">
-                    <td className="px-4 py-3">
-                      <div className="flex flex-col items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => moveUp(index)} disabled={index === 0} className="text-neutral-400 hover:text-neutral-900 disabled:opacity-30">
-                          ▲
-                        </button>
-                        <button onClick={() => moveDown(index)} disabled={index === filteredCategories.length - 1} className="text-neutral-400 hover:text-neutral-900 disabled:opacity-30">
-                          ▼
-                        </button>
-                      </div>
-                    </td>
-                    
+                filteredCategories.map((cat) => (
+                  <tr key={cat.id} className="hover:bg-muted/20">
                     {isEditing === cat.id ? (
-                      <td colSpan={5} className="px-4 py-4">
-                        <div className="flex flex-col gap-4">
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <td colSpan={6} className="p-4 bg-muted/10">
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <Input 
                               value={editForm.name} 
                               onChange={e => setEditForm({ ...editForm, name: e.target.value })} 
-                              placeholder="Name"
+                              placeholder="Category Name"
                             />
                             <Input 
                               value={editForm.description || ''} 
@@ -204,59 +255,95 @@ export function AdminCategories() {
                             <select 
                               value={editForm.status}
                               onChange={e => setEditForm({ ...editForm, status: e.target.value as any })}
-                              className="h-10 px-3 rounded-lg border border-neutral-200 text-sm focus:ring-2 focus:ring-neutral-900 bg-white"
+                              className="h-10 px-3 rounded-lg border border-input text-xs bg-background"
                             >
                               <option value="Published">Published</option>
                               <option value="Hidden">Hidden</option>
                             </select>
                           </div>
-                          <div className="flex gap-2 justify-end">
+
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            {(['image', 'thumbnail', 'displayImage', 'mobileImage'] as const).map(field => (
+                              <div key={field} className="border border-border rounded p-2 bg-background space-y-2">
+                                <span className="text-[10px] font-bold uppercase text-muted-foreground block capitalize">{field.replace(/([A-Z])/g, ' $1')}</span>
+                                <div className="aspect-square bg-muted rounded overflow-hidden relative flex items-center justify-center">
+                                  {editForm[field] ? (
+                                    <img src={editForm[field]} alt={field} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <ImageIcon className="w-5 h-5 text-muted-foreground/30" />
+                                  )}
+                                </div>
+                                <label className="cursor-pointer bg-muted hover:bg-muted/80 text-[10px] py-1 px-2 rounded w-full flex items-center justify-center gap-1 font-semibold">
+                                  <Upload className="w-3 h-3" />
+                                  {uploadingField === `edit_${field}` ? '...' : 'Replace'}
+                                  <input 
+                                    type="file" 
+                                    accept="image/png, image/jpeg, image/jpg, image/webp" 
+                                    onChange={e => e.target.files?.[0] && handleImageUpload(e.target.files[0], field, true)} 
+                                    className="hidden" 
+                                  />
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="flex gap-2 justify-end border-t border-border pt-3">
                             <Button size="sm" variant="outline" onClick={() => setIsEditing(null)}>Cancel</Button>
-                            <Button size="sm" onClick={saveEdit} disabled={!editForm.name} className="bg-neutral-900 text-white">Save</Button>
+                            <Button size="sm" onClick={saveEdit} className="uppercase tracking-[1px] font-bold">Save Changes</Button>
                           </div>
                         </div>
                       </td>
                     ) : (
                       <>
                         <td className="px-4 py-3">
-                          <div className="w-12 h-12 rounded-lg bg-neutral-100 overflow-hidden border border-neutral-200 flex items-center justify-center">
-                            {cat.image ? (
-                              <img src={cat.image} alt={cat.name} className="w-full h-full object-cover" />
+                          <div className="w-12 h-12 rounded-lg bg-muted overflow-hidden border border-border flex items-center justify-center">
+                            {cat.thumbnail || cat.image || cat.displayImage ? (
+                              <img src={cat.thumbnail || cat.image || cat.displayImage} alt={cat.name} className="w-full h-full object-cover" />
                             ) : (
-                              <ImageIcon className="w-5 h-5 text-neutral-300" />
+                              <ImageIcon className="w-5 h-5 text-muted-foreground/40" />
                             )}
                           </div>
                         </td>
-                        <td className="px-4 py-3 font-medium text-neutral-900">
+                        <td className="px-4 py-3 font-bold text-foreground">
                           {cat.name}
-                          {cat.description && <p className="text-xs text-neutral-500 font-normal truncate max-w-[200px] mt-0.5">{cat.description}</p>}
+                          {cat.description && <p className="text-[11px] text-muted-foreground font-normal truncate max-w-[200px] mt-0.5">{cat.description}</p>}
                         </td>
-                        <td className="px-4 py-3 text-neutral-600">
-                          <span className="bg-neutral-100 text-neutral-700 px-2 py-0.5 rounded text-xs font-medium">
+                        <td className="px-4 py-3">
+                          <div className="flex gap-1.5 items-center">
+                            {cat.image && <span className="text-[9px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-bold">IMAGE</span>}
+                            {cat.thumbnail && <span className="text-[9px] bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded font-bold">THUMBNAIL</span>}
+                            {cat.displayImage && <span className="text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold">DISPLAY</span>}
+                            {cat.mobileImage && <span className="text-[9px] bg-green-100 text-green-800 px-1.5 py-0.5 rounded font-bold">MOBILE</span>}
+                            {!cat.image && !cat.thumbnail && !cat.displayImage && !cat.mobileImage && (
+                              <span className="text-[10px] text-muted-foreground italic">No assets</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="bg-muted px-2 py-0.5 rounded text-[11px] font-medium text-foreground">
                             {getProductCount(cat.id)} items
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                            cat.status === 'Published' ? 'bg-green-50 text-green-700 border border-green-200' :
-                            'bg-neutral-100 text-neutral-600 border border-neutral-200'
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
+                            cat.status === 'Published' ? 'bg-green-100 text-green-800' : 'bg-muted text-muted-foreground'
                           }`}>
                             {cat.status || 'Published'}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1">
                             <button 
                               onClick={() => startEdit(cat)}
-                              className="p-1.5 text-neutral-400 hover:text-neutral-900 rounded-md hover:bg-neutral-200 transition-colors"
-                              title="Edit"
+                              className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground"
+                              title="Edit Category & Images"
                             >
                               <Edit2 className="w-4 h-4" />
                             </button>
                             <button 
                               onClick={() => handleDelete(cat)}
-                              className="p-1.5 text-neutral-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
-                              title="Delete"
+                              className="p-1.5 hover:bg-red-50 text-red-600 rounded"
+                              title="Delete Category"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>

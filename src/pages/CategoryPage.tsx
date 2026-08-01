@@ -1,26 +1,73 @@
 import React, { useState } from 'react';
-import { useParams } from 'react-router';
+import { useParams, useSearchParams } from 'react-router';
 import { ProductGrid } from '../components/product/ProductGrid';
 import { useStore } from '../contexts/StoreContext';
 import { Button } from '../components/ui/Button';
-import { SlidersHorizontal, X } from 'lucide-react';
+import { Spinner } from '../components/ui/Spinner';
+import { SlidersHorizontal, X, PackageX } from 'lucide-react';
 import { SEO } from '../components/SEO';
+import { slugify } from '../lib/utils';
 
 export function CategoryPage() {
   const { slug } = useParams();
+  const [searchParams] = useSearchParams();
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const { products: allProducts, categories } = useStore();
+  const { products: allProducts, categories, isLoading } = useStore();
   
-  const category = categories.find(c => c.slug === slug);
-  const products = allProducts.filter(p => p.categoryId === category?.id);
+  const targetSlug = (slug || '').toLowerCase().trim();
+  const searchQuery = searchParams.get('q')?.toLowerCase() || '';
+
+  // Find category matching slug, slugified name, or id, or fallback for all/search
+  const category = categories.find(c => 
+    c.slug?.toLowerCase() === targetSlug || 
+    slugify(c.name) === targetSlug ||
+    c.id === targetSlug ||
+    c.name.toLowerCase() === targetSlug
+  ) || (targetSlug === 'all' || targetSlug === 'search' || searchQuery ? { id: 'all', name: searchQuery ? `Search Results` : 'All Products', slug: 'all' } : null);
+
+  // Filter published products belonging to this category / search query
+  const products = allProducts.filter(p => {
+    // Must be Published
+    if (p.status && p.status !== 'Published') return false;
+
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const matchesQuery = 
+        p.patternNumber?.toLowerCase().includes(q) ||
+        p.fabric?.toLowerCase().includes(q) ||
+        p.categoryName?.toLowerCase().includes(q) ||
+        p.description?.toLowerCase().includes(q) ||
+        p.keywords?.some(k => k.toLowerCase().includes(q));
+      if (!matchesQuery) return false;
+    }
+    
+    if (category && category.id !== 'all') {
+      const matchesCategory = 
+        p.categoryId === category.id ||
+        p.categoryId === category.slug ||
+        (p.categoryName && p.categoryName.toLowerCase() === category.name.toLowerCase()) ||
+        (category.slug && p.categoryId === category.slug);
+      if (!matchesCategory) return false;
+    }
+
+    return true;
+  });
+
+  if (isLoading) {
+    return (
+      <div className="py-32 text-center flex flex-col items-center justify-center min-h-[70vh]">
+        <Spinner />
+      </div>
+    );
+  }
 
   if (!category) {
     return (
-      <div className="py-32 text-center flex flex-col items-center">
+      <div className="py-32 text-center flex flex-col items-center min-h-[70vh] justify-center">
         <SEO title="Category Not Found - MNFR Wholesale" />
-        <h2 className="font-serif text-3xl mb-4">No Products Available</h2>
+        <h2 className="font-serif text-3xl mb-4">Category Not Found</h2>
         <p className="text-muted-foreground text-sm max-w-md mx-auto mb-8">
-          We couldn't find any products in this category. They might be out of stock or discontinued.
+          We couldn't find the requested category. It may have been renamed or removed.
         </p>
         <Button variant="outline" className="rounded-none border-foreground text-foreground px-8 text-[11px] uppercase tracking-[1px]" onClick={() => window.history.back()}>
           Return
@@ -137,12 +184,13 @@ export function CategoryPage() {
         )}
 
         {/* Product Grid Area */}
-        <main className="flex-1">
+        <main className="flex-1 min-h-[400px]">
           {products.length === 0 ? (
-            <div className="py-20 text-center flex flex-col items-center">
-              <h2 className="font-serif text-2xl mb-4">No Products Found</h2>
+            <div className="py-24 text-center flex flex-col items-center justify-center border border-dashed border-border rounded-lg bg-muted/10 h-full min-h-[300px]">
+              <PackageX className="w-12 h-12 text-muted-foreground/50 mb-4 stroke-1" />
+              <h2 className="font-serif text-2xl mb-2 text-foreground">No Products Found</h2>
               <p className="text-muted-foreground text-sm max-w-md mx-auto">
-                Try adjusting your filters to find what you're looking for.
+                No products available in this category. Add products from Admin.
               </p>
             </div>
           ) : (

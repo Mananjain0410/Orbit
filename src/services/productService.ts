@@ -1,24 +1,25 @@
-import { collection, doc, setDoc, getDoc, getDocs, query, where, updateDoc, serverTimestamp, deleteDoc, orderBy } from 'firebase/firestore';
+import { collection, doc, setDoc, getDoc, getDocs, query, where, updateDoc, deleteDoc, orderBy } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { Product } from '../types';
+import { inventoryService } from './inventoryService';
+import { categoryService } from './categoryService';
 
 export const productService = {
   subscribeToAllProducts(includeHidden: boolean = false, callback: (products: Product[]) => void): () => void {
     const productsRef = collection(db, 'products');
-    let q;
-    if (!includeHidden) {
-      q = query(productsRef, where('status', '==', 'Published'));
-    } else {
-      q = query(productsRef, orderBy('createdAt', 'desc'));
-    }
-    
     let isSubscribed = true;
+    
     const unsubscribe = import('firebase/firestore').then(({ onSnapshot }) => {
-      return onSnapshot(q, (snapshot) => {
+      return onSnapshot(productsRef, (snapshot) => {
         let products = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as Product));
+        
         if (!includeHidden) {
-          products.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+          products = products.filter(p => p.status === 'Published');
+        } else {
+          products = products.filter(p => p.status !== 'Archived');
         }
+        
+        products.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
         if (isSubscribed) callback(products);
       });
     });
@@ -32,20 +33,16 @@ export const productService = {
   async getAllProducts(includeHidden: boolean = false): Promise<Product[]> {
     try {
       const productsRef = collection(db, 'products');
-      let q;
-      
-      if (!includeHidden) {
-        q = query(productsRef, where('status', '==', 'Published'));
-      } else {
-        q = query(productsRef, orderBy('createdAt', 'desc'));
-      }
-      
-      const snapshot = await getDocs(q);
+      const snapshot = await getDocs(productsRef);
       let products = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as Product));
       
       if (!includeHidden) {
-        products.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        products = products.filter(p => p.status === 'Published');
+      } else {
+        products = products.filter(p => p.status !== 'Archived');
       }
+      
+      products.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       return products;
     } catch (error) {
       console.error('Error fetching products:', error);
@@ -55,18 +52,8 @@ export const productService = {
 
   async getProductsByCategory(categoryId: string, includeHidden: boolean = false): Promise<Product[]> {
     try {
-      const productsRef = collection(db, 'products');
-      let q;
-      if (!includeHidden) {
-        q = query(productsRef, where('categoryId', '==', categoryId), where('status', '==', 'Published'));
-      } else {
-        q = query(productsRef, where('categoryId', '==', categoryId));
-      }
-      
-      const snapshot = await getDocs(q);
-      
-      let products = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as Product));
-      return products;
+      const allProducts = await this.getAllProducts(includeHidden);
+      return allProducts.filter(p => p.categoryId === categoryId || p.categoryName === categoryId);
     } catch (error) {
       console.error('Error fetching products by category:', error);
       throw error;
@@ -93,25 +80,50 @@ export const productService = {
       const docRef = doc(db, 'products', id);
       
       const now = Date.now();
+      let categoryName = product.categoryName;
+      if (!categoryName && product.categoryId) {
+        try {
+          const categories = await categoryService.getAllCategories(true);
+          const matchedCat = categories.find(c => c.id === product.categoryId);
+          if (matchedCat) categoryName = matchedCat.name;
+        } catch (e) {
+          console.warn('Could not fetch category name for product', e);
+        }
+      }
+      
+      let savedProduct: Product;
       
       if (product.id) {
         // Update
-        const updateData = { ...product, updatedAt: now };
+        const updateData: any = { 
+          ...product, 
+          updatedAt: now 
+        };
+        if (categoryName) updateData.categoryName = categoryName;
         delete updateData.id;
-        await updateDoc(docRef, updateData);
         
-        return this.getProductById(id) as Promise<Product>;
+        await updateDoc(docRef, updateData);
+        savedProduct = (await this.getProductById(id)) as Product;
       } else {
         // Create
-        const newData = {
+        const newData: any = {
           ...product,
           status: product.status || 'Draft',
           createdAt: now,
           updatedAt: now,
         };
+        if (categoryName) newData.categoryName = categoryName;
+        
         await setDoc(docRef, newData);
-        return { id, ...newData } as Product;
+        savedProduct = { id, ...newData } as Product;
       }
+
+      // Automatically initialize inventory records in Firestore per color
+      if (savedProduct && savedProduct.colors) {
+        await inventoryService.initializeProductInventory(savedProduct);
+      }
+      
+      return savedProduct;
     } catch (error) {
       console.error('Error saving product:', error);
       throw error;

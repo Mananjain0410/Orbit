@@ -1,6 +1,6 @@
 {
-  "name": "",
-  "description": "",
+  "name": "MNFR Wholesale",
+  "description": "B2B wholesale apparel platform for MNFR Clothing.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

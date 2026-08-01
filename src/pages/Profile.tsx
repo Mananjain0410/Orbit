@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '../components/ui/Button';
-import { User, LogOut, Heart, Clock, ShoppingBag, Edit, MapPin, Building, ShieldCheck, ChevronRight } from 'lucide-react';
+import { User, LogOut, Heart, Clock, ShoppingBag, Edit, MapPin, Building, ShieldCheck, ChevronRight, Bookmark, Trash2, FolderPlus, Play, Check } from 'lucide-react';
 import { useFavorites } from '../contexts/FavoritesContext';
 import { useRecentView } from '../contexts/RecentViewContext';
 import { useCart } from '../contexts/CartContext';
 import { useRetailer } from '../contexts/RetailerAuthContext';
 import { orderService } from '../services/orderService';
+import { savedCartService, SavedCart } from '../services/savedCartService';
+import { useToast } from '../components/ui/Toast';
 import { Order } from '../types';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { ProductCard } from '../components/product/ProductCard';
@@ -40,6 +42,13 @@ export function Profile() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
 
+  const { loadSavedCart } = useCart();
+  const { showToast } = useToast();
+  const [savedCarts, setSavedCarts] = useState<SavedCart[]>([]);
+  const [loadingCarts, setLoadingCarts] = useState(false);
+  const [editingCartId, setEditingCartId] = useState<string | null>(null);
+  const [editCartName, setEditCartName] = useState('');
+
   useEffect(() => {
     let unsubscribe = () => {};
     if (activeTab === 'history' && retailer) {
@@ -51,6 +60,44 @@ export function Profile() {
     }
     return () => unsubscribe();
   }, [activeTab, retailer]);
+
+  useEffect(() => {
+    let unsubscribe = () => {};
+    if (activeTab === 'cart' && retailer) {
+      setLoadingCarts(true);
+      unsubscribe = savedCartService.subscribeToSavedCarts(retailer.uid, (data) => {
+        setSavedCarts(data);
+        setLoadingCarts(false);
+      });
+    }
+    return () => unsubscribe();
+  }, [activeTab, retailer]);
+
+  const handleLoadSavedCart = (savedCart: SavedCart) => {
+    loadSavedCart(savedCart.items);
+    showToast(`Loaded "${savedCart.name}" into your active cart`, 'success');
+    navigate('/cart');
+  };
+
+  const handleDeleteSavedCart = async (cartId: string) => {
+    try {
+      await savedCartService.deleteSavedCart(cartId);
+      showToast('Saved cart deleted', 'info');
+    } catch (e) {
+      showToast('Failed to delete saved cart', 'error');
+    }
+  };
+
+  const handleRenameSavedCart = async (cartId: string) => {
+    if (!editCartName.trim()) return;
+    try {
+      await savedCartService.renameSavedCart(cartId, editCartName.trim());
+      showToast('Cart renamed', 'success');
+      setEditingCartId(null);
+    } catch (e) {
+      showToast('Failed to rename cart', 'error');
+    }
+  };
 
   if (!retailer) {
     return (
@@ -67,9 +114,9 @@ export function Profile() {
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 min-h-[70vh] pt-24 md:pt-32">
       <SEO title="Retailer Profile - MNFR Wholesale" />
       
-      <div className="flex flex-col md:flex-row gap-10">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start w-full">
         {/* Sidebar */}
-        <div className="md:w-1/4">
+        <div className="md:col-span-3 sticky top-32 self-start">
           <div className="mb-8">
             <h1 className="font-serif text-2xl mb-1">{profile.firmName}</h1>
             <p className="text-muted-foreground text-sm">{profile.ownerName}</p>
@@ -124,8 +171,8 @@ export function Profile() {
           </nav>
         </div>
 
-        {/* Content */}
-        <div className="md:w-3/4">
+        {/* Content Area */}
+        <div className="md:col-span-9 min-h-[500px]">
           
           {activeTab === 'profile' && (
             <div>
@@ -279,25 +326,128 @@ export function Profile() {
           )}
 
           {activeTab === 'cart' && (
-            <div>
-              <h2 className="font-serif text-3xl mb-8 border-b border-border pb-4">Saved Cart</h2>
-              {items.length > 0 ? (
-                <div className="border border-border p-6 bg-muted/10 flex flex-col items-center text-center">
-                  <ShoppingBag className="w-12 h-12 text-accent mb-4 stroke-1" />
-                  <h3 className="text-lg font-bold mb-2">Cart is safely stored</h3>
-                  <p className="text-sm text-muted-foreground mb-6">
-                    You currently have {items.length} products with a total of {totalSets} sets in your cart. Estimated value: ₹{totalPrice.toLocaleString()}.
-                  </p>
-                  <Button asChild className="rounded-none text-[11px] uppercase tracking-[2px] font-bold px-8 h-12">
-                    <Link to="/cart">Open Cart</Link>
+            <div className="space-y-8">
+              {/* Active Cart Banner */}
+              <div>
+                <h2 className="font-serif text-3xl mb-6 border-b border-border pb-4">Current Active Cart</h2>
+                {items.length > 0 ? (
+                  <div className="border border-border p-6 bg-muted/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 text-left">
+                      <ShoppingBag className="w-10 h-10 text-accent shrink-0" />
+                      <div>
+                        <h3 className="text-base font-bold">{items.length} Products ({totalSets} Sets)</h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">Estimated Value: ₹{totalPrice.toLocaleString()}</p>
+                      </div>
+                    </div>
+                    <Button asChild className="rounded-none text-[11px] uppercase tracking-[2px] font-bold px-6 h-10">
+                      <Link to="/cart">Open Active Cart</Link>
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 border border-border bg-muted/10">
+                    <p className="text-muted-foreground text-sm">Your active cart is currently empty.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Saved Carts Collection */}
+              <div>
+                <div className="flex justify-between items-center mb-6 border-b border-border pb-4">
+                  <h2 className="font-serif text-3xl">Saved Carts ({savedCarts.length})</h2>
+                  <Button asChild variant="outline" className="rounded-none text-[10px] uppercase tracking-[1px]">
+                    <Link to="/cart"><Bookmark className="w-3.5 h-3.5 mr-1.5" /> Save Current Cart</Link>
                   </Button>
                 </div>
-              ) : (
-                <div className="text-center py-16 border border-border bg-muted/10">
-                  <ShoppingBag className="w-12 h-12 text-muted-foreground mx-auto mb-4 stroke-1" />
-                  <p className="text-muted-foreground mb-6 text-sm">Your cart is currently empty.</p>
-                </div>
-              )}
+
+                {loadingCarts ? (
+                  <div className="py-12 flex justify-center"><Spinner /></div>
+                ) : savedCarts.length > 0 ? (
+                  <div className="space-y-4">
+                    {savedCarts.map(cart => {
+                      const totalSetsInSavedCart = cart.items.reduce((acc, item) => acc + item.selections.reduce((sum, sel) => sum + sel.quantity, 0), 0);
+                      const isEditing = editingCartId === cart.id;
+
+                      return (
+                        <div key={cart.id} className="border border-border p-6 bg-background rounded-lg shadow-sm hover:border-accent/40 transition-colors">
+                          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 pb-4 border-b border-border">
+                            <div>
+                              {isEditing ? (
+                                <div className="flex items-center gap-2">
+                                  <input 
+                                    type="text"
+                                    value={editCartName}
+                                    onChange={(e) => setEditCartName(e.target.value)}
+                                    className="border border-input rounded px-3 py-1 text-sm font-semibold bg-background"
+                                  />
+                                  <Button size="sm" onClick={() => handleRenameSavedCart(cart.id)} className="h-8 text-xs">
+                                    <Check className="w-3.5 h-3.5 mr-1" /> Save
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-3">
+                                  <Bookmark className="w-5 h-5 text-accent" />
+                                  <h3 className="font-serif text-xl">{cart.name}</h3>
+                                  <button 
+                                    onClick={() => { setEditingCartId(cart.id); setEditCartName(cart.name); }}
+                                    className="text-muted-foreground hover:text-foreground text-xs"
+                                    title="Rename"
+                                  >
+                                    <Edit className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              )}
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Saved on {new Date(cart.createdAt).toLocaleDateString()} • {cart.items.length} Products • {totalSetsInSavedCart} Sets
+                              </p>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              <Button 
+                                onClick={() => handleLoadSavedCart(cart)}
+                                className="rounded-none text-[10px] uppercase tracking-[1px] font-bold h-10 px-5"
+                              >
+                                <Play className="w-3.5 h-3.5 mr-1.5 fill-current" /> Load Into Cart
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => handleDeleteSavedCart(cart.id)}
+                                className="text-muted-foreground hover:text-red-500 h-10 w-10 p-0"
+                                title="Delete saved cart"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Items Preview */}
+                          <div className="pt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            {cart.items.slice(0, 4).map((item, idx) => (
+                              <div key={idx} className="flex items-center gap-2 bg-muted/20 p-2 rounded border border-border/50 text-xs">
+                                {item.product.images?.[0] && (
+                                  <img src={item.product.images[0]} alt={item.product.patternNumber} className="w-8 h-10 object-cover rounded shrink-0 border border-border" />
+                                )}
+                                <div className="truncate">
+                                  <span className="font-semibold block truncate">{item.product.patternNumber}</span>
+                                  <span className="text-[10px] text-muted-foreground">{item.selections.reduce((s, sel) => s + sel.quantity, 0)} sets</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 border border-border bg-muted/10 rounded-lg">
+                    <Bookmark className="w-12 h-12 text-muted-foreground mx-auto mb-3 stroke-1" />
+                    <h3 className="font-serif text-lg mb-1">No Saved Carts</h3>
+                    <p className="text-xs text-muted-foreground max-w-sm mx-auto mb-4">
+                      You haven't saved any cart configurations yet. Build a cart and click "Save Cart For Later" to reuse it anytime.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

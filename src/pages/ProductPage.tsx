@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router';
 import { useStore } from '../contexts/StoreContext';
 import { Button } from '../components/ui/Button';
+import { Spinner } from '../components/ui/Spinner';
 import { ShoppingCart, Heart, Share2, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { useFavorites } from '../contexts/FavoritesContext';
@@ -11,7 +12,7 @@ import { SEO } from '../components/SEO';
 
 export function ProductPage() {
   const { id } = useParams();
-  const { products, categories } = useStore();
+  const { products, categories, isLoading } = useStore();
   const product = products.find(p => p.id === id);
   const category = categories.find(c => c.id === product?.categoryId);
   
@@ -23,9 +24,18 @@ export function ProductPage() {
   const [colorQuantities, setColorQuantities] = useState<Record<string, string>>({});
   const [added, setAdded] = useState(false);
 
+  const productId = product?.id;
   useEffect(() => {
     if (product) addRecentView(product);
-  }, [product, addRecentView]);
+  }, [productId, addRecentView]);
+
+  if (isLoading) {
+    return (
+      <div className="py-32 text-center flex flex-col items-center min-h-[70vh] justify-center">
+        <Spinner />
+      </div>
+    );
+  }
 
   if (!product) {
     return (
@@ -188,29 +198,50 @@ export function ProductPage() {
           <div className="mb-8 border-b border-border pb-8">
             <h3 className="text-[10px] uppercase tracking-[2px] font-bold text-accent mb-6">Select Quantities (Sets)</h3>
             <div className="space-y-4">
-              {product.colors.map(color => (
-                <div key={color.name} className="flex items-center justify-between p-3 border border-border hover:border-foreground/50 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className="w-6 h-6 rounded-full border border-border shadow-sm" style={{ backgroundColor: color.hex }} />
-                    <span className="text-sm font-medium">{color.name}</span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    {!product.inStock ? (
-                      <span className="text-[10px] uppercase tracking-[1px] text-red-500 font-bold">Out of Stock</span>
-                    ) : (
-                      <input 
-                        type="text" 
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        placeholder="0"
-                        value={colorQuantities[color.name] || ''}
-                        onChange={(e) => handleQuantityChange(color.name, e.target.value)}
-                        className="w-20 h-10 border border-border text-center focus:outline-none focus:border-foreground text-sm font-medium bg-background"
-                      />
+              {product.colors.map(color => {
+                const stock = typeof color.stock === 'number' ? color.stock : undefined;
+                const isOutOfStock = stock === 0;
+                const isLowStock = typeof stock === 'number' && stock > 0 && stock <= 10;
+                const requestedQty = parseInt(colorQuantities[color.name] || '0', 10);
+                const exceedsStock = typeof stock === 'number' && stock > 0 && requestedQty > stock;
+
+                return (
+                  <div key={color.name} className="flex flex-col gap-2 p-3 border border-border hover:border-foreground/50 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-6 h-6 rounded-full border border-border shadow-sm shrink-0" style={{ backgroundColor: color.hex }} />
+                        <span className="text-sm font-medium">{color.name}</span>
+                        {isLowStock && (
+                          <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-full">
+                            Only {stock} sets left
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4">
+                        {isOutOfStock || !product.inStock ? (
+                          <span className="text-[10px] uppercase tracking-[1px] text-red-600 bg-red-50 border border-red-200 px-2 py-1 rounded font-bold">Out of Stock</span>
+                        ) : (
+                          <input 
+                            type="text" 
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            placeholder="0"
+                            value={colorQuantities[color.name] || ''}
+                            onChange={(e) => handleQuantityChange(color.name, e.target.value)}
+                            className="w-20 h-10 border border-border text-center focus:outline-none focus:border-foreground text-sm font-medium bg-background"
+                          />
+                        )}
+                      </div>
+                    </div>
+                    {exceedsStock && (
+                      <div className="text-[11px] text-amber-800 bg-amber-50/90 border border-amber-200 p-2 rounded flex items-center justify-between">
+                        <span>You requested {requestedQty} sets. Only {stock} sets are currently available.</span>
+                        <span className="text-[10px] uppercase tracking-[0.5px] font-bold text-amber-900">Order allowed</span>
+                      </div>
                     )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 

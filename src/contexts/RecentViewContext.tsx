@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Product } from '../types';
 import { useStore } from '../contexts/StoreContext';
 
@@ -23,12 +23,14 @@ export function RecentViewProvider({ children }: { children: React.ReactNode }) 
     localStorage.setItem('mnfr_recent', JSON.stringify(recentIds));
   }, [recentIds]);
 
-  const addRecentView = (product: Product) => {
+  const addRecentView = useCallback((product: Product) => {
+    if (!product || !product.id) return;
     setRecentIds(prev => {
+      if (prev[0] === product.id) return prev;
       const filtered = prev.filter(id => id !== product.id);
-      return [product.id, ...filtered].slice(0, 10); // Keep last 10
+      return [product.id, ...filtered].slice(0, 10);
     });
-  };
+  }, []);
 
   const { products } = useStore();
   const recentViews = recentIds.map(id => products.find(p => p.id === id)).filter((p): p is Product => p !== undefined);

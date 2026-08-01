@@ -5,6 +5,7 @@ import { productService } from '../../services/productService';
 import { categoryService } from '../../services/categoryService';
 import { retailerService } from '../../services/retailerService';
 import { orderService } from '../../services/orderService';
+import { Product, Category, Retailer, Order } from '../../types';
 import { 
   Package, 
   Tags, 
@@ -15,12 +16,13 @@ import {
   Image as ImageIcon,
   ExternalLink,
   Clock,
-  ArrowRight
+  ArrowRight,
+  Activity
 } from 'lucide-react';
 import { Link } from 'react-router';
 
 // Reusable Stat Card
-function StatCard({ title, value, icon: Icon, trend, trendLabel }: any) {
+function StatCard({ title, value, icon: Icon, trendLabel }: any) {
   return (
     <div className="bg-white p-6 rounded-xl border border-neutral-200 shadow-sm">
       <div className="flex items-center justify-between mb-4">
@@ -32,43 +34,46 @@ function StatCard({ title, value, icon: Icon, trend, trendLabel }: any) {
       <div className="flex items-baseline gap-2">
         <span className="text-3xl font-semibold tracking-tight">{value}</span>
       </div>
-      {trend !== undefined && (
+      {trendLabel && (
         <p className="text-xs text-neutral-500 mt-2 flex items-center gap-1">
-          <span className={trend > 0 ? 'text-green-600' : 'text-neutral-500'}>
-            {trend > 0 ? '+' : ''}{trend}
-          </span>
-          {' '}{trendLabel}
+          {trendLabel}
         </p>
       )}
     </div>
   );
 }
 
+interface ActivityItem {
+  id: string;
+  title: string;
+  description: string;
+  timestamp: Date;
+  type: 'retailer' | 'order' | 'product';
+}
+
 export function AdminDashboard() {
   const { user } = useAdminAuth();
   
-  const [stats, setStats] = useState({
-    products: 0,
-    categories: 0,
-    retailers: 0,
-    orders: 0
-  });
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [retailers, setRetailers] = useState<Retailer[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
 
   useEffect(() => {
     const unsubProducts = productService.subscribeToAllProducts(true, (data) => {
-      setStats(s => ({ ...s, products: data.length }));
+      setProducts(data);
     });
     
     const unsubCategories = categoryService.subscribeToAllCategories(true, (data) => {
-      setStats(s => ({ ...s, categories: data.length }));
+      setCategories(data);
     });
     
     const unsubRetailers = retailerService.subscribeToAllRetailers((data) => {
-      setStats(s => ({ ...s, retailers: data.length }));
+      setRetailers(data);
     });
     
     const unsubOrders = orderService.subscribeToAllOrders((data) => {
-      setStats(s => ({ ...s, orders: data.filter(o => o.status === 'Pending').length }));
+      setOrders(data);
     });
 
     return () => {
@@ -78,6 +83,69 @@ export function AdminDashboard() {
       unsubOrders();
     };
   }, []);
+
+  const totalProducts = products.length;
+  const totalCategories = categories.length;
+  const totalRetailers = retailers.length;
+  const pendingOrders = orders.filter(o => o.status === 'Pending').length;
+
+  const publishedProducts = products.filter(p => p.status === 'Published').length;
+  const draftProducts = products.filter(p => p.status === 'Draft' || !p.status).length;
+  const lowStockProducts = products.filter(p => p.inStock && p.colors && p.colors.some(c => c.stock > 0 && c.stock < 50)).length;
+  const outOfStockProducts = products.filter(p => !p.inStock || (p.colors && p.colors.every(c => c.stock === 0))).length;
+
+  // Build real dynamic recent activity from Firestore data
+  const activities: ActivityItem[] = [];
+
+  retailers.forEach(r => {
+    if (r.createdAt) {
+      activities.push({
+        id: `ret-${r.uid}`,
+        title: 'New Retailer Registered',
+        description: `${r.firmName || r.ownerName} created an account.`,
+        timestamp: new Date(r.createdAt),
+        type: 'retailer'
+      });
+    }
+  });
+
+  orders.forEach(o => {
+    if (o.createdAt) {
+      activities.push({
+        id: `ord-${o.id}`,
+        title: `Order ${o.orderNumber || ''} ${o.status}`,
+        description: `${o.retailerFirmName || 'Retailer'} placed order worth ₹${o.estimatedValue?.toLocaleString() || 0}.`,
+        timestamp: new Date(o.createdAt),
+        type: 'order'
+      });
+    }
+  });
+
+  products.forEach(p => {
+    if (p.createdAt) {
+      activities.push({
+        id: `prod-${p.id}`,
+        title: 'Product Added',
+        description: `${p.fabric} (${p.patternNumber})`,
+        timestamp: new Date(p.createdAt),
+        type: 'product'
+      });
+    }
+  });
+
+  activities.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  const recentActivities = activities.slice(0, 5);
+
+  const formatTimeAgo = (date: Date) => {
+    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+    if (seconds < 60) return 'Just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  };
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
@@ -91,10 +159,10 @@ export function AdminDashboard() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        <StatCard title="Total Products" value={stats.products} icon={Package} />
-        <StatCard title="Total Categories" value={stats.categories} icon={Tags} />
-        <StatCard title="Total Retailers" value={stats.retailers} icon={Users} />
-        <StatCard title="Pending Orders" value={stats.orders} icon={ShoppingCart} trendLabel="requires action" />
+        <StatCard title="Total Products" value={totalProducts} icon={Package} />
+        <StatCard title="Total Categories" value={totalCategories} icon={Tags} />
+        <StatCard title="Total Retailers" value={totalRetailers} icon={Users} />
+        <StatCard title="Pending Orders" value={pendingOrders} icon={ShoppingCart} trendLabel="requires action" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
@@ -156,19 +224,19 @@ export function AdminDashboard() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 <div>
                   <p className="text-xs text-neutral-500 mb-1">Published</p>
-                  <p className="text-xl font-semibold">118</p>
+                  <p className="text-xl font-semibold">{publishedProducts}</p>
                 </div>
                 <div>
                   <p className="text-xs text-neutral-500 mb-1">Draft Products</p>
-                  <p className="text-xl font-semibold">6</p>
+                  <p className="text-xl font-semibold">{draftProducts}</p>
                 </div>
                 <Link to="/admin/inventory?status=low" className="block hover:bg-neutral-50 p-2 -m-2 rounded-lg transition-colors cursor-pointer">
                   <p className="text-xs text-neutral-500 mb-1">Low Stock</p>
-                  <p className="text-xl font-semibold text-amber-600">3</p>
+                  <p className="text-xl font-semibold text-amber-600">{lowStockProducts}</p>
                 </Link>
                 <Link to="/admin/inventory?status=out" className="block hover:bg-neutral-50 p-2 -m-2 rounded-lg transition-colors cursor-pointer">
                   <p className="text-xs text-neutral-500 mb-1">Out of Stock</p>
-                  <p className="text-xl font-semibold text-red-600">1</p>
+                  <p className="text-xl font-semibold text-red-600">{outOfStockProducts}</p>
                 </Link>
               </div>
             </div>
@@ -181,38 +249,32 @@ export function AdminDashboard() {
             <h2 className="font-medium">Recent Activity</h2>
           </div>
           <div className="flex-1 p-6">
-            <div className="space-y-6">
-              {/* Timeline Items */}
-              <div className="relative flex items-start gap-4">
-                <div className="w-2 h-2 rounded-full bg-neutral-900 mt-2 flex-shrink-0 z-10"></div>
-                <div>
-                  <p className="text-sm font-medium">New Retailer Registered</p>
-                  <p className="text-xs text-neutral-500 mt-1">Sharma Textiles created an account.</p>
-                  <span className="text-[10px] text-neutral-400 mt-1 flex items-center gap-1"><Clock className="w-3 h-3" /> 2 hours ago</span>
-                </div>
+            {recentActivities.length > 0 ? (
+              <div className="space-y-6">
+                {recentActivities.map((act, index) => (
+                  <div key={act.id} className="relative flex items-start gap-4">
+                    <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 z-10 ${index === 0 ? 'bg-neutral-900' : 'bg-neutral-300'}`}></div>
+                    <div>
+                      <p className="text-sm font-medium">{act.title}</p>
+                      <p className="text-xs text-neutral-500 mt-1">{act.description}</p>
+                      <span className="text-[10px] text-neutral-400 mt-1 flex items-center gap-1">
+                        <Clock className="w-3 h-3" /> {formatTimeAgo(act.timestamp)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="relative flex items-start gap-4">
-                <div className="w-2 h-2 rounded-full bg-neutral-300 mt-2 flex-shrink-0 z-10"></div>
-                <div>
-                  <p className="text-sm font-medium">Product Added</p>
-                  <p className="text-xs text-neutral-500 mt-1">Linen Blend Kurta Set (MNFR-234)</p>
-                  <span className="text-[10px] text-neutral-400 mt-1 flex items-center gap-1"><Clock className="w-3 h-3" /> 5 hours ago</span>
-                </div>
+            ) : (
+              <div className="text-center py-12 text-neutral-400 text-sm flex flex-col items-center">
+                <Activity className="w-8 h-8 mb-2 opacity-50" />
+                <p>No recent activity logged</p>
               </div>
-              <div className="relative flex items-start gap-4">
-                <div className="w-2 h-2 rounded-full bg-neutral-300 mt-2 flex-shrink-0 z-10"></div>
-                <div>
-                  <p className="text-sm font-medium">Homepage Banner Updated</p>
-                  <p className="text-xs text-neutral-500 mt-1">Summer Collection hero image updated.</p>
-                  <span className="text-[10px] text-neutral-400 mt-1 flex items-center gap-1"><Clock className="w-3 h-3" /> Yesterday</span>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
           <div className="p-4 border-t border-neutral-100 bg-neutral-50">
-            <button className="text-sm text-neutral-600 font-medium hover:text-neutral-900 flex items-center gap-1 w-full justify-center">
-              View all activity <ArrowRight className="w-4 h-4" />
-            </button>
+            <Link to="/admin/orders" className="text-sm text-neutral-600 font-medium hover:text-neutral-900 flex items-center gap-1 w-full justify-center">
+              View all orders <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
         </div>
       </div>

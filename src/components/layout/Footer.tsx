@@ -12,16 +12,20 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
           {/* Brand Info */}
           <div className="flex flex-col gap-6">
-            <span className="font-serif font-bold text-3xl tracking-tighter uppercase">
-              {settings.storeInfo.name.split(' ')[0]}.
-            </span>
+            {settings.storeInfo.logoUrl ? (
+              <img src={settings.storeInfo.logoUrl} alt={settings.storeInfo.name} className="h-10 max-w-[200px] object-contain" />
+            ) : (
+              <span className="font-serif font-bold text-3xl tracking-tighter uppercase">
+                {settings.storeInfo.name}
+              </span>
+            )}
             <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
               {settings.storeInfo.aboutText}
             </p>
             <div className="flex gap-4 text-foreground/70">
-              <a href={settings.social.instagram} className="hover:text-foreground transition-colors" aria-label="Instagram" target="_blank" rel="noopener noreferrer"><Instagram className="w-5 h-5" /></a>
-              <a href={settings.social.facebook} className="hover:text-foreground transition-colors" aria-label="Facebook" target="_blank" rel="noopener noreferrer"><Facebook className="w-5 h-5" /></a>
-              <a href="#" className="hover:text-foreground transition-colors" aria-label="Twitter"><Twitter className="w-5 h-5" /></a>
+              {settings.social.instagram && <a href={settings.social.instagram} className="hover:text-foreground transition-colors" aria-label="Instagram" target="_blank" rel="noopener noreferrer"><Instagram className="w-5 h-5" /></a>}
+              {settings.social.facebook && <a href={settings.social.facebook} className="hover:text-foreground transition-colors" aria-label="Facebook" target="_blank" rel="noopener noreferrer"><Facebook className="w-5 h-5" /></a>}
+              {settings.social.twitter && <a href={settings.social.twitter} className="hover:text-foreground transition-colors" aria-label="Twitter" target="_blank" rel="noopener noreferrer"><Twitter className="w-5 h-5" /></a>}
             </div>
           </div>
 

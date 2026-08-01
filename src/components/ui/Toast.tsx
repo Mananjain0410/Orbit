@@ -13,6 +13,7 @@ export interface ToastMessage {
 
 interface ToastContextType {
   toast: (title: string, description?: string, type?: ToastType) => void;
+  showToast: (title: string, typeOrDesc?: ToastType | string, descOrType?: string | ToastType) => void;
   success: (title: string, description?: string) => void;
   error: (title: string, description?: string) => void;
 }
@@ -43,8 +44,26 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
+  const showToast = useCallback((title: string, typeOrDesc?: ToastType | string, descOrType?: string | ToastType) => {
+    let type: ToastType = 'info';
+    let description: string | undefined = undefined;
+
+    if (typeOrDesc === 'success' || typeOrDesc === 'error' || typeOrDesc === 'info' || typeOrDesc === 'warning') {
+      type = typeOrDesc;
+      if (typeof descOrType === 'string') description = descOrType;
+    } else if (typeof typeOrDesc === 'string') {
+      description = typeOrDesc;
+      if (descOrType === 'success' || descOrType === 'error' || descOrType === 'info' || descOrType === 'warning') {
+        type = descOrType;
+      }
+    }
+
+    addToast(title, description, type);
+  }, [addToast]);
+
   const value = {
     toast: addToast,
+    showToast,
     success: (title: string, description?: string) => addToast(title, description, 'success'),
     error: (title: string, description?: string) => addToast(title, description, 'error'),
   };

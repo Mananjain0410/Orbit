@@ -6,6 +6,8 @@ import { Input } from '../../components/ui/Input';
 import { SEO } from '../../components/SEO';
 import { ShieldAlert, Loader2 } from 'lucide-react';
 
+import { auditLogService } from '../../services/auditLogService';
+
 export function AdminLogin() {
   const { login, isAuthenticated } = useAdminAuth();
   const navigate = useNavigate();
@@ -26,6 +28,7 @@ export function AdminLogin() {
 
     try {
       await login(email, password);
+      await auditLogService.logAction('admin_login', `Admin user logged in: ${email}`);
       navigate('/admin/dashboard');
     } catch (err: any) {
       setError(err.message || 'Authentication failed');

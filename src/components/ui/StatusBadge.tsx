@@ -12,7 +12,7 @@ export function StatusBadge({ status, type = 'order', className = '' }: StatusBa
   let textColor = 'text-neutral-800';
   let borderColor = 'border-transparent';
 
-  switch (status) {
+  switch (status as string) {
     case 'Pending':
       bgColor = 'bg-amber-100';
       textColor = 'text-amber-800';

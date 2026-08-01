@@ -3,10 +3,12 @@ import { useParams, Link, useNavigate } from 'react-router';
 import { useReactToPrint } from 'react-to-print';
 import { orderService } from '../../services/orderService';
 import { inventoryService } from '../../services/inventoryService';
+import { productService } from '../../services/productService';
 import { exportService } from '../../services/exportService';
-import { Order, OrderStatus, FulfillmentStatus } from '../../types';
+import { retailerService, RetailerProfile } from '../../services/retailerService';
+import { Order, OrderStatus, FulfillmentStatus, Product } from '../../types';
 import { Button } from '../../components/ui/Button';
-import { ArrowLeft, Save, Building, User, Phone, MapPin, Calendar, Clock, Activity, AlertCircle, FileText, Download, Printer } from 'lucide-react';
+import { ArrowLeft, Save, Building, User, Phone, MapPin, Calendar, Clock, Activity, AlertCircle, FileText, Download, Printer, FileCheck } from 'lucide-react';
 import { Spinner } from '../../components/ui/Spinner';
 import { useToast } from '../../components/ui/Toast';
 import { StatusBadge } from '../../components/ui/StatusBadge';
@@ -16,12 +18,22 @@ import { PrintablePackingSheet } from '../../components/print/PrintablePackingSh
 export function AdminOrderDetails() {
   const { id } = useParams<{ id: string }>();
   const [order, setOrder] = useState<Order | null>(null);
+  const [retailer, setRetailer] = useState<RetailerProfile | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [internalNotes, setInternalNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   
   const printOrderRef = useRef<HTMLDivElement>(null);
   const printPackingRef = useRef<HTMLDivElement>(null);
+
+  const navigate = useNavigate();
+  const { showToast } = useToast();
+
+  useEffect(() => {
+    const unsub = productService.subscribeToAllProducts(true, setProducts);
+    return () => unsub();
+  }, []);
   
   const handlePrintOrder = useReactToPrint({
     contentRef: printOrderRef,
@@ -40,19 +52,24 @@ export function AdminOrderDetails() {
     }
   };
 
-  const navigate = useNavigate();
-  const { showToast } = useToast();
-
   useEffect(() => {
     let unsubscribe = () => {};
     if (id) {
       setLoading(true);
       let isFirstLoad = true;
-      unsubscribe = orderService.subscribeToOrder(id, (data) => {
+      unsubscribe = orderService.subscribeToOrder(id, async (data) => {
         setOrder(data);
         if (data && isFirstLoad) {
           setInternalNotes(data.internalNotes || '');
           isFirstLoad = false;
+        }
+        if (data?.retailerId) {
+          try {
+            const retData = await retailerService.getRetailerById(data.retailerId);
+            setRetailer(retData);
+          } catch (e) {
+            console.error('Failed to load retailer details', e);
+          }
         }
         setLoading(false);
       });
@@ -74,57 +91,26 @@ export function AdminOrderDetails() {
   };
 
   const handleOrderStatusChange = async (newStatus: OrderStatus) => {
-    if (!order) return;
+    if (!order || order.status === newStatus) return;
     try {
       await orderService.updateOrderStatus(order.id, order.status, newStatus, 'Admin');
-      
-      // Auto-restore inventory if cancelled
-      if (newStatus === 'Cancelled' && order.inventoryDeducted) {
-        const result = await inventoryService.restoreInventory(order);
-        if (result.success) {
-          showToast(`Order status updated to ${newStatus}. Inventory restored.`, 'success');
-        } else {
-          showToast(`Order cancelled, but inventory restoration failed: ${result.error}`, 'error');
-        }
-      } else {
-        showToast(`Order status updated to ${newStatus}`, 'success');
-      }
-      
-    } catch (error) {
-      showToast('Failed to update order status', 'error');
+      showToast(`Order status updated to ${newStatus}`, 'success');
+    } catch (error: any) {
+      showToast(error.message || 'Failed to update order status', 'error');
     }
   };
 
   const handleFulfillmentStatusChange = async (newStatus: FulfillmentStatus) => {
-    if (!order) return;
-    
-    // Inventory deduction logic
-    if (newStatus === 'Packed' && !order.inventoryDeducted) {
-      const inventoryCheck = await inventoryService.checkInventory(order);
-      
-      if (!inventoryCheck.isSufficient) {
-        let msg = 'Insufficient inventory for:\n';
-        inventoryCheck.shortages.forEach(s => {
-           msg += `- ${s.patternNumber} (${s.color}): Need ${s.requested}, Have ${s.available}\n`;
-        });
-        showToast(msg, 'error');
-        return; // Prevent status change
-      }
-
-      const deductResult = await inventoryService.deductInventory(order);
-      if (!deductResult.success) {
-         showToast(`Failed to deduct inventory: ${deductResult.error}`, 'error');
-         return;
-      }
-      
-      showToast('Inventory deducted successfully.', 'success');
-    }
+    if (!order || order.fulfillmentStatus === newStatus) return;
     
     try {
-      await orderService.updateFulfillmentStatus(order.id, order.fulfillmentStatus, newStatus, 'Admin');
-      showToast(`Fulfillment updated to ${newStatus}`, 'success');
-    } catch (error) {
-      showToast('Failed to update fulfillment', 'error');
+      if (order.status === 'Pending') {
+        await orderService.updateOrderStatus(order.id, order.status, 'Confirmed', 'Admin');
+      }
+      await orderService.updateFulfillmentStatus(order.id, order.fulfillmentStatus || 'Not Started', newStatus, 'Admin');
+      showToast(`Fulfillment status updated to ${newStatus}`, 'success');
+    } catch (error: any) {
+      showToast(error.message || 'Failed to update fulfillment status', 'error');
     }
   };
 
@@ -158,24 +144,43 @@ export function AdminOrderDetails() {
               <div className="flex items-start gap-3">
                 <Building className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                 <div>
-                  <div className="font-medium text-base">{order.firmName}</div>
-                  {order.retailerId && <div className="text-muted-foreground mt-1">ID: {order.retailerId}</div>}
+                  <div className="font-medium text-base">{retailer?.firmName || order.firmName || 'Retailer'}</div>
+                  {order.retailerId && <div className="text-muted-foreground text-xs mt-0.5">ID: {order.retailerId}</div>}
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <User className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                <span>{order.ownerName}</span>
+                <div>
+                  <div className="font-medium text-xs text-muted-foreground uppercase tracking-wider">Owner</div>
+                  <div>{retailer?.ownerName || order.ownerName || 'N/A'}</div>
+                </div>
               </div>
               <div className="flex items-start gap-3">
                 <Phone className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                <span>{order.phone}</span>
+                <div>
+                  <div className="font-medium text-xs text-muted-foreground uppercase tracking-wider">Contact</div>
+                  <div>{retailer?.phone || order.phone || 'N/A'}</div>
+                </div>
               </div>
               <div className="flex items-start gap-3">
                 <MapPin className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                <span>Address on file</span>
+                <div>
+                  <div className="font-medium text-xs text-muted-foreground uppercase tracking-wider">Location</div>
+                  <div>{retailer?.address || 'Primary Business Outlet'}</div>
+                  <div className="text-muted-foreground text-xs mt-0.5">
+                    {retailer?.city || retailer?.state ? `${retailer.city || ''}${retailer.city && retailer.state ? ', ' : ''}${retailer.state || ''}` : 'Location on file'}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <FileCheck className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-medium text-xs text-muted-foreground uppercase tracking-wider">GST Number</div>
+                  <div className="font-mono text-xs">{retailer?.gst || 'Not provided'}</div>
+                </div>
               </div>
               <div className="pt-4 border-t border-border">
-                <Button variant="outline" className="w-full" asChild>
+                <Button variant="outline" className="w-full text-xs" asChild>
                    <Link to={`/admin/retailers/${order.retailerId}`}>Open Retailer Profile</Link>
                 </Button>
               </div>
@@ -261,45 +266,59 @@ export function AdminOrderDetails() {
                   <tr>
                     <th className="px-4 py-3 font-medium">Product</th>
                     <th className="px-4 py-3 font-medium">Color</th>
-                    <th className="px-4 py-3 font-medium text-right">Sets</th>
+                    <th className="px-4 py-3 font-medium text-center">Req / Fulfilled / Pending</th>
                     <th className="px-4 py-3 font-medium text-right">Est. Value</th>
                     <th className="px-4 py-3 font-medium text-center">Inv. Ref</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {order.items.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-muted/5 transition-colors">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-16 bg-muted rounded overflow-hidden shrink-0 border border-border">
-                            {item.image && <img src={item.image} alt={item.patternNumber} className="w-full h-full object-cover mix-blend-multiply" />}
+                  {order.items.map((item, idx) => {
+                    const liveProduct = products.find(p => p.id === item.productId || p.patternNumber === item.patternNumber);
+                    const colorObj = liveProduct?.colors?.find(c => (c.name || '').trim().toLowerCase() === (item.color || '').trim().toLowerCase());
+                    const liveStock = typeof colorObj?.stock === 'number' ? colorObj.stock : undefined;
+                    const fulfilled = item.fulfilledSets !== undefined ? item.fulfilledSets : item.sets;
+                    const pending = item.pendingSets !== undefined ? item.pendingSets : 0;
+
+                    return (
+                      <tr key={idx} className="hover:bg-muted/5 transition-colors">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-16 bg-muted rounded overflow-hidden shrink-0 border border-border">
+                              {item.image && <img src={item.image} alt={item.patternNumber} className="w-full h-full object-cover mix-blend-multiply" />}
+                            </div>
+                            <div>
+                              <div className="font-semibold uppercase tracking-wider text-[11px]">{item.patternNumber}</div>
+                              <div className="text-[10px] text-muted-foreground mt-1 tracking-wider uppercase">Sizes: {item.sizes.join(', ')}</div>
+                            </div>
                           </div>
-                          <div>
-                            <div className="font-semibold uppercase tracking-wider text-[11px]">{item.patternNumber}</div>
-                            <div className="text-[10px] text-muted-foreground mt-1 tracking-wider uppercase">Sizes: {item.sizes.join(', ')}</div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full border border-border shadow-sm" style={{ backgroundColor: item.hex }} />
+                            <span className="font-medium text-xs">{item.color}</span>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full border border-border shadow-sm" style={{ backgroundColor: item.hex }} />
-                          <span className="font-medium text-xs">{item.color}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-right font-medium">
-                        {item.sets}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="font-medium">₹{(item.sets * item.price).toLocaleString()}</div>
-                        <div className="text-[10px] text-muted-foreground mt-0.5">₹{item.price}/set</div>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <div className="inline-flex items-center justify-center px-2 py-1 rounded bg-neutral-100 text-[10px] font-semibold text-neutral-600">
-                          {item.sets * 2} in stock
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <div className="text-xs font-bold">Requested: {item.sets}</div>
+                          <div className="text-xs font-medium text-emerald-700">Fulfilled: {fulfilled}</div>
+                          {pending > 0 && (
+                            <div className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 mt-1 inline-block">
+                              Pending: {pending} ({item.unfulfilledReason || 'Stock Shortage'})
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="font-medium">₹{(fulfilled * item.price).toLocaleString()}</div>
+                          <div className="text-[10px] text-muted-foreground mt-0.5">₹{item.price}/set</div>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <div className="inline-flex items-center justify-center px-2 py-1 rounded bg-neutral-100 text-[10px] font-semibold text-neutral-600">
+                            {liveStock !== undefined ? `${liveStock} in stock` : 'N/A'}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -340,18 +359,24 @@ export function AdminOrderDetails() {
                   className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
                   value={order.fulfillmentStatus || 'Not Started'}
                   onChange={(e) => handleFulfillmentStatusChange(e.target.value as FulfillmentStatus)}
-                  disabled={order.status !== 'Confirmed' || order.fulfillmentStatus === 'Delivered'}
+                  disabled={order.status === 'Cancelled' || order.status === 'Rejected'}
                 >
                   <option value="Not Started">Not Started</option>
-                  <option value="Picking">Picking</option>
+                  <option value="Partial Fulfillment">Partial Fulfillment</option>
                   <option value="Packed">Packed</option>
-                  <option value="Ready for Dispatch">Ready for Dispatch</option>
                   <option value="Dispatched">Dispatched</option>
                   <option value="Delivered">Delivered</option>
                 </select>
                 <div className="pt-2 flex flex-col gap-2">
-                  <StatusBadge status={order.fulfillmentStatus || 'Not Started'} type="fulfillment" />
-                  {order.status !== 'Confirmed' && <span className="text-xs text-amber-600">Order must be Confirmed to update fulfillment.</span>}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <StatusBadge status={order.fulfillmentStatus || 'Not Started'} type="fulfillment" />
+                    {order.isPartialFulfillment && (
+                      <span className="text-[10px] uppercase font-bold tracking-[1px] bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded">
+                        Partial Fulfillment Badge
+                      </span>
+                    )}
+                  </div>
+                  {order.status === 'Pending' && <span className="text-xs text-muted-foreground">Selecting a fulfillment status will automatically confirm the order.</span>}
                 </div>
               </div>
 

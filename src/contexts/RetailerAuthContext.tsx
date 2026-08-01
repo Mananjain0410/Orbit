@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
-import { auth } from '../firebase/config';
+import { auth, db } from '../firebase/config';
 import { retailerService, RetailerProfile } from '../services/retailerService';
 
 interface RetailerAuthContextType {
@@ -24,7 +24,6 @@ export function RetailerAuthProvider({ children }: { children: React.ReactNode }
       if (user && user.phoneNumber) {
         // We need a real-time listener for the retailer profile status
         import('firebase/firestore').then(({ doc, onSnapshot }) => {
-          const { db } = require('../firebase/config');
           unsubProfile = onSnapshot(doc(db, 'retailers', user.uid), (snapshot) => {
             if (snapshot.exists()) {
               setRetailer({ uid: snapshot.id, ...(snapshot.data() as any) } as RetailerProfile);

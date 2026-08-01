@@ -166,11 +166,8 @@ export function AdminOrders() {
             >
               <option value="all">All Fulfillment</option>
               <option value="Not Started">Not Started</option>
-              <option value="Picking">Picking</option>
               <option value="Packed">Packed</option>
-              <option value="Ready for Dispatch">Ready for Dispatch</option>
               <option value="Dispatched">Dispatched</option>
-              <option value="Delivered">Delivered</option>
             </select>
 
             <select 

@@ -173,29 +173,42 @@ export function OrderDetails() {
         <div className="md:col-span-2 space-y-6">
           <h2 className="text-[12px] font-bold uppercase tracking-[2px] border-b border-border pb-2">Order Items</h2>
           <div className="space-y-4">
-            {order.items.map((item, idx) => (
-              <div key={idx} className="border border-border p-4 flex gap-4 bg-card">
-                <div className="w-20 h-28 bg-muted relative shrink-0">
-                  {item.image && <img src={item.image} alt={item.patternNumber} className="w-full h-full object-cover mix-blend-multiply" />}
+            {order.items.map((item, idx) => {
+              const fulfilled = item.fulfilledSets !== undefined ? item.fulfilledSets : item.sets;
+              const pending = item.pendingSets !== undefined ? item.pendingSets : 0;
+
+              return (
+                <div key={idx} className="border border-border p-4 flex gap-4 bg-card">
+                  <div className="w-20 h-28 bg-muted relative shrink-0">
+                    {item.image && <img src={item.image} alt={item.patternNumber} className="w-full h-full object-cover mix-blend-multiply" />}
+                  </div>
+                  <div className="flex-1 flex flex-col justify-center">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="font-bold tracking-[2px] uppercase text-[12px]">{item.patternNumber}</span>
+                      <span className="font-serif">₹{item.price} / set</span>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 mb-2 text-sm">
+                      <div className="w-3 h-3 rounded-full border border-border" style={{ backgroundColor: item.hex }} />
+                      <span>{item.color}</span>
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end text-sm mt-auto gap-2">
+                      <span className="text-muted-foreground text-xs uppercase tracking-[1px]">Sizes: {item.sizes.join(', ')}</span>
+                      <div className="text-right">
+                        <div className="font-medium text-xs">Requested: {item.sets} Sets</div>
+                        <div className="font-semibold text-emerald-700 text-xs">Fulfilled: {fulfilled} Sets</div>
+                        {pending > 0 && (
+                          <div className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 mt-1">
+                            Pending: {pending} Sets ({item.unfulfilledReason || 'Stock Shortage'})
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex-1 flex flex-col justify-center">
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="font-bold tracking-[2px] uppercase text-[12px]">{item.patternNumber}</span>
-                    <span className="font-serif">₹{item.price} / set</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 mb-2 text-sm">
-                    <div className="w-3 h-3 rounded-full border border-border" style={{ backgroundColor: item.hex }} />
-                    <span>{item.color}</span>
-                  </div>
-                  
-                  <div className="flex justify-between items-end text-sm mt-auto">
-                    <span className="text-muted-foreground text-xs uppercase tracking-[1px]">Sizes: {item.sizes.join(', ')}</span>
-                    <span className="font-medium">{item.sets} Sets</span>
-                  </div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {order.retailerNotes && (

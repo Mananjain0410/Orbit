@@ -1,6 +1,7 @@
-import { Order, OrderItem } from '../types';
+import { doc, setDoc, runTransaction } from 'firebase/firestore';
+import { db } from '../firebase/config';
+import { Order, OrderItem, Product } from '../types';
 import { productService } from './productService';
-import { orderService } from './orderService';
 import { notificationService } from './notificationService';
 import { settingsService } from './settingsService';
 
@@ -16,33 +17,93 @@ export interface InventoryCheckResult {
 }
 
 export const inventoryService = {
+  // Automatically initialize inventory records in Firestore when a product is created or updated
+  async initializeProductInventory(product: Product): Promise<void> {
+    try {
+      if (!product || !product.id || !product.colors) return;
+      
+      const now = Date.now();
+      for (const colorObj of product.colors) {
+        const colorName = colorObj.name;
+        if (!colorName) continue;
+        
+        const stock = typeof colorObj.stock === 'number' ? colorObj.stock : 0;
+        const invDocId = `${product.id}_${colorName.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`;
+        const invRef = doc(db, 'inventory', invDocId);
+        
+        const invData = {
+          id: invDocId,
+          productId: product.id,
+          patternNumber: product.patternNumber || '',
+          color: colorName,
+          hex: colorObj.hex || '#000000',
+          currentStock: stock,
+          reservedStock: 0,
+          availableStock: stock,
+          createdAt: product.createdAt || now,
+          updatedAt: now
+        };
+        
+        await setDoc(invRef, invData, { merge: true });
+      }
+    } catch (error) {
+      console.error('Error initializing product inventory:', error);
+    }
+  },
+
   // Check if there is enough inventory for an order
   async checkInventory(order: Order): Promise<InventoryCheckResult> {
-    const shortages = [];
-    
-    // Group order items by product and color to check against current inventory
+    const shortages: {
+      productId: string;
+      patternNumber: string;
+      color: string;
+      requested: number;
+      available: number;
+    }[] = [];
+
+    const aggregatedNeeded: Record<string, { productId: string; patternNumber: string; color: string; requested: number }> = {};
     for (const item of order.items) {
-      const product = await productService.getProductById(item.productId);
-      if (!product) {
-        shortages.push({
+      const normColor = (item.color || '').trim().toLowerCase();
+      const key = `${item.productId}_${normColor}`;
+      if (!aggregatedNeeded[key]) {
+        aggregatedNeeded[key] = {
           productId: item.productId,
           patternNumber: item.patternNumber,
           color: item.color,
-          requested: item.sets,
+          requested: 0
+        };
+      }
+      aggregatedNeeded[key].requested += item.sets || 0;
+    }
+
+    const productCache: Record<string, Product | null> = {};
+    for (const key of Object.keys(aggregatedNeeded)) {
+      const req = aggregatedNeeded[key];
+      if (!productCache[req.productId]) {
+        productCache[req.productId] = await productService.getProductById(req.productId);
+      }
+      const product = productCache[req.productId];
+
+      if (!product || !product.colors) {
+        shortages.push({
+          productId: req.productId,
+          patternNumber: req.patternNumber,
+          color: req.color,
+          requested: req.requested,
           available: 0
         });
         continue;
       }
 
-      const productColor = product.colors.find(c => c.name === item.color);
-      const available = productColor?.stock || 0;
+      const productColor = product.colors.find(c => (c.name || '').trim().toLowerCase() === (req.color || '').trim().toLowerCase());
+      const available = productColor && typeof productColor.stock === 'number' ? productColor.stock : 0;
 
-      if (available < item.sets) {
+      if (available < req.requested) {
         shortages.push({
-          productId: item.productId,
-          patternNumber: item.patternNumber,
-          color: item.color,
-          requested: item.sets,
+          productId: req.productId,
+          patternNumber: req.patternNumber,
+          color: req.color,
+          requested: req.requested,
           available
         });
       }
@@ -54,70 +115,195 @@ export const inventoryService = {
     };
   },
 
-  // Deduct inventory for an order
-  async deductInventory(order: Order, userId: string = 'Admin'): Promise<{ success: boolean; error?: string }> {
-    if (order.inventoryDeducted) {
-      return { success: false, error: 'Inventory has already been deducted for this order.' };
-    }
+  // Transaction-based inventory deduction for Confirmed order status
+  async deductInventoryTransaction(orderId: string, userId: string = 'Admin'): Promise<{ success: boolean; error?: string }> {
+    try {
+      const orderRef = doc(db, 'orders', orderId);
 
-    const check = await this.checkInventory(order);
-    
-    if (!check.isSufficient) {
-      return { success: false, error: 'Insufficient inventory for some items.' };
-    }
+      return await runTransaction(db, async (transaction) => {
+        const orderSnap = await transaction.get(orderRef);
+        if (!orderSnap.exists()) {
+          throw new Error('Order not found.');
+        }
+        const order = orderSnap.data() as Order;
 
-    const currentSettings = await settingsService.getSettings();
-    const threshold = currentSettings.inventory.lowStockThreshold || 10;
-    
-    for (const item of order.items) {
-      const product = await productService.getProductById(item.productId);
-      if (product) {
-        const productColor = product.colors.find(c => c.name === item.color);
-        if (productColor && typeof productColor.stock === 'number') {
-          productColor.stock -= item.sets;
-          
-          await productService.saveProduct(product);
-          
-          if (productColor.stock < threshold) {
-            // Notify Admin of low stock
-            notificationService.createNotification({
-              userId: 'Admin',
-              title: 'Low Stock Alert',
-              message: `Product ${product.patternNumber} (${productColor.name}) stock has fallen to ${productColor.stock} sets.`,
-              type: 'inventory',
-              link: `/admin/inventory`
-            }).catch(console.error);
+        // Prevent double deduction
+        if (order.inventoryDeducted) {
+          return { success: true };
+        }
+
+        const productIds = Array.from(new Set(order.items.map(i => i.productId)));
+        const productRefsMap: Record<string, { ref: any; data: Product }> = {};
+
+        for (const pId of productIds) {
+          const pRef = doc(db, 'products', pId);
+          const pSnap = await transaction.get(pRef);
+          if (pSnap.exists()) {
+            productRefsMap[pId] = { ref: pRef, data: { id: pSnap.id, ...(pSnap.data() as any) } as Product };
           }
         }
-      }
-    }
 
-    // Mark order as inventory deducted
-    await orderService.markInventoryDeducted(order.id, true, userId);
-    
-    return { success: true };
+        // Aggregate required quantities per product and color
+        const productDeductions: Record<string, Record<string, number>> = {};
+        for (const item of order.items) {
+          const pId = item.productId;
+          const normColor = (item.color || '').trim().toLowerCase();
+          if (!productDeductions[pId]) productDeductions[pId] = {};
+          productDeductions[pId][normColor] = (productDeductions[pId][normColor] || 0) + (item.sets || 0);
+        }
+
+        const now = Date.now();
+        let hasPartial = false;
+
+        const updatedOrderItems = order.items.map(item => {
+          const pObj = productRefsMap[item.productId];
+          if (!pObj) return { ...item, fulfilledSets: item.sets, pendingSets: 0 };
+
+          const normColor = (item.color || '').trim().toLowerCase();
+          const colorItem = (pObj.data.colors || []).find(c => (c.name || '').trim().toLowerCase() === normColor);
+          const currentStock = colorItem && typeof colorItem.stock === 'number' ? colorItem.stock : 0;
+          
+          const requested = item.sets || 0;
+          const fulfilled = Math.min(requested, currentStock);
+          const pending = Math.max(0, requested - fulfilled);
+
+          if (pending > 0) {
+            hasPartial = true;
+          }
+
+          return {
+            ...item,
+            fulfilledSets: fulfilled,
+            pendingSets: pending,
+            unfulfilledReason: pending > 0 ? 'Unfulfilled due to stock shortage' : undefined
+          };
+        });
+
+        for (const pId of Object.keys(productDeductions)) {
+          const pObj = productRefsMap[pId];
+          if (!pObj) continue;
+
+          const product = pObj.data;
+          const colorMap = productDeductions[pId];
+          const newColors = (product.colors || []).map(c => ({ ...c }));
+
+          for (const normColor of Object.keys(colorMap)) {
+            const qtyNeeded = colorMap[normColor];
+            const colorItem = newColors.find(c => (c.name || '').trim().toLowerCase() === normColor);
+            if (!colorItem) continue;
+            
+            const currentStock = typeof colorItem.stock === 'number' ? colorItem.stock : 0;
+            const actualDeduction = Math.min(qtyNeeded, currentStock);
+            colorItem.stock = Math.max(0, currentStock - actualDeduction);
+          }
+
+          transaction.update(pObj.ref, {
+            colors: newColors,
+            updatedAt: now
+          });
+        }
+
+        const updateData: any = {
+          inventoryDeducted: true,
+          items: updatedOrderItems,
+          updatedAt: now
+        };
+
+        if (hasPartial) {
+          updateData.isPartialFulfillment = true;
+          updateData.fulfillmentStatus = 'Partial Fulfillment';
+        }
+
+        transaction.update(orderRef, updateData);
+
+        return { success: true };
+      });
+    } catch (error: any) {
+      console.error('Deduct inventory transaction error:', error);
+      return { success: false, error: error.message || 'Failed to deduct inventory.' };
+    }
   },
 
-  // Restore inventory for an order
-  async restoreInventory(order: Order, userId: string = 'Admin'): Promise<{ success: boolean; error?: string }> {
-    if (!order.inventoryDeducted) {
-      return { success: false, error: 'Inventory has not been deducted for this order, so it cannot be restored.' };
-    }
+  // Transaction-based inventory restoration when order status moves from Confirmed to Pending / On Hold / Rejected / Cancelled
+  async restoreInventoryTransaction(orderId: string, userId: string = 'Admin'): Promise<{ success: boolean; error?: string }> {
+    try {
+      const orderRef = doc(db, 'orders', orderId);
 
-    for (const item of order.items) {
-      const product = await productService.getProductById(item.productId);
-      if (product) {
-        const productColor = product.colors.find(c => c.name === item.color);
-        if (productColor && typeof productColor.stock === 'number') {
-          productColor.stock += item.sets;
-          await productService.saveProduct(product);
+      return await runTransaction(db, async (transaction) => {
+        const orderSnap = await transaction.get(orderRef);
+        if (!orderSnap.exists()) {
+          throw new Error('Order not found.');
         }
-      }
-    }
+        const order = orderSnap.data() as Order;
 
-    // Mark order as inventory not deducted
-    await orderService.markInventoryDeducted(order.id, false, userId);
-    
-    return { success: true };
+        // If not deducted, nothing to restore
+        if (!order.inventoryDeducted) {
+          return { success: true };
+        }
+
+        const productIds = Array.from(new Set(order.items.map(i => i.productId)));
+        const productRefsMap: Record<string, { ref: any; data: Product }> = {};
+
+        for (const pId of productIds) {
+          const pRef = doc(db, 'products', pId);
+          const pSnap = await transaction.get(pRef);
+          if (pSnap.exists()) {
+            productRefsMap[pId] = { ref: pRef, data: { id: pSnap.id, ...(pSnap.data() as any) } as Product };
+          }
+        }
+
+        // Aggregate quantities to restore per product and color
+        const productRestorations: Record<string, Record<string, number>> = {};
+        for (const item of order.items) {
+          const pId = item.productId;
+          const normColor = (item.color || '').trim().toLowerCase();
+          if (!productRestorations[pId]) productRestorations[pId] = {};
+          productRestorations[pId][normColor] = (productRestorations[pId][normColor] || 0) + (item.sets || 0);
+        }
+
+        const now = Date.now();
+
+        for (const pId of Object.keys(productRestorations)) {
+          const pObj = productRefsMap[pId];
+          if (!pObj) continue;
+
+          const product = pObj.data;
+          const colorMap = productRestorations[pId];
+          const newColors = (product.colors || []).map(c => ({ ...c }));
+
+          for (const normColor of Object.keys(colorMap)) {
+            const qtyToRestore = colorMap[normColor];
+            const colorItem = newColors.find(c => (c.name || '').trim().toLowerCase() === normColor);
+            if (colorItem) {
+              colorItem.stock = (typeof colorItem.stock === 'number' ? colorItem.stock : 0) + qtyToRestore;
+            }
+          }
+
+          transaction.update(pObj.ref, {
+            colors: newColors,
+            updatedAt: now
+          });
+        }
+
+        transaction.update(orderRef, {
+          inventoryDeducted: false,
+          updatedAt: now
+        });
+
+        return { success: true };
+      });
+    } catch (error: any) {
+      console.error('Restore inventory transaction error:', error);
+      return { success: false, error: error.message || 'Failed to restore inventory.' };
+    }
+  },
+
+  // Wrappers
+  async deductInventory(order: Order, userId: string = 'Admin'): Promise<{ success: boolean; error?: string }> {
+    return this.deductInventoryTransaction(order.id, userId);
+  },
+
+  async restoreInventory(order: Order, userId: string = 'Admin'): Promise<{ success: boolean; error?: string }> {
+    return this.restoreInventoryTransaction(order.id, userId);
   }
 };
