@@ -13,7 +13,9 @@ import {
   Settings, 
   LogOut,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Database,
+  Building2
 } from 'lucide-react';
 import { useAdminAuth } from '../../../contexts/AdminAuthContext';
 import { cn } from '../../../lib/utils'; // wait, do we have cn? I'll use simple template strings if not.
@@ -32,6 +34,8 @@ export function AdminSidebar({ isCollapsed, setIsCollapsed, mobileOpen, setMobil
     { label: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
     { label: 'Products', icon: Package, path: '/admin/products' },
     { label: 'Categories', icon: Tags, path: '/admin/categories' },
+    { label: 'Master Data', icon: Database, path: '/admin/master-data' },
+    { label: 'Business Profile', icon: Building2, path: '/admin/business-profile' },
     { label: 'Inventory', icon: Archive, path: '/admin/inventory' },
     { label: 'Retailers', icon: Users, path: '/admin/retailers' },
     { label: 'Orders', icon: ShoppingCart, path: '/admin/orders' },

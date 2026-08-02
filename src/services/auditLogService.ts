@@ -16,7 +16,20 @@ export type AuditAction =
   | 'banner_updated'
   | 'media_uploaded'
   | 'media_replaced'
-  | 'media_deleted';
+  | 'media_deleted'
+  | 'master_fabric_created'
+  | 'master_fabric_updated'
+  | 'master_fabric_deleted'
+  | 'master_color_created'
+  | 'master_color_updated'
+  | 'master_color_deleted'
+  | 'master_fit_created'
+  | 'master_fit_updated'
+  | 'master_fit_deleted'
+  | 'master_length_created'
+  | 'master_length_updated'
+  | 'master_length_deleted'
+  | 'business_profile_updated';
 
 export interface AuditLog {
   id?: string;

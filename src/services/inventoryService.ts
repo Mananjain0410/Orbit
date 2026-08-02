@@ -5,6 +5,24 @@ import { productService } from './productService';
 import { notificationService } from './notificationService';
 import { settingsService } from './settingsService';
 
+// Helper function to recursively remove undefined properties before saving to Firestore
+function cleanUndefinedFields<T>(obj: T): T {
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(cleanUndefinedFields) as unknown as T;
+  }
+  const cleanObj: any = {};
+  for (const key of Object.keys(obj)) {
+    const val = (obj as any)[key];
+    if (val !== undefined) {
+      cleanObj[key] = cleanUndefinedFields(val);
+    }
+  }
+  return cleanObj as T;
+}
+
 export interface InventoryCheckResult {
   isSufficient: boolean;
   shortages: {
@@ -171,12 +189,17 @@ export const inventoryService = {
             hasPartial = true;
           }
 
-          return {
+          const updatedItem: OrderItem = {
             ...item,
             fulfilledSets: fulfilled,
-            pendingSets: pending,
-            unfulfilledReason: pending > 0 ? 'Unfulfilled due to stock shortage' : undefined
+            pendingSets: pending
           };
+
+          if (pending > 0) {
+            updatedItem.unfulfilledReason = 'Unfulfilled due to stock shortage';
+          }
+
+          return updatedItem;
         });
 
         for (const pId of Object.keys(productDeductions)) {
@@ -197,10 +220,10 @@ export const inventoryService = {
             colorItem.stock = Math.max(0, currentStock - actualDeduction);
           }
 
-          transaction.update(pObj.ref, {
+          transaction.update(pObj.ref, cleanUndefinedFields({
             colors: newColors,
             updatedAt: now
-          });
+          }));
         }
 
         const updateData: any = {
@@ -214,7 +237,7 @@ export const inventoryService = {
           updateData.fulfillmentStatus = 'Partial Fulfillment';
         }
 
-        transaction.update(orderRef, updateData);
+        transaction.update(orderRef, cleanUndefinedFields(updateData));
 
         return { success: true };
       });
@@ -279,16 +302,16 @@ export const inventoryService = {
             }
           }
 
-          transaction.update(pObj.ref, {
+          transaction.update(pObj.ref, cleanUndefinedFields({
             colors: newColors,
             updatedAt: now
-          });
+          }));
         }
 
-        transaction.update(orderRef, {
+        transaction.update(orderRef, cleanUndefinedFields({
           inventoryDeducted: false,
           updatedAt: now
-        });
+        }));
 
         return { success: true };
       });

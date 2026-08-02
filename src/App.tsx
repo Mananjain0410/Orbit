@@ -38,6 +38,8 @@ import { AdminInventory } from './pages/admin/AdminInventory';
 import { AdminRetailers } from './pages/admin/AdminRetailers';
 import { AdminRetailerProfile } from './pages/admin/AdminRetailerProfile';
 import { AdminContent } from './pages/admin/AdminContent';
+import { AdminMasterData } from './pages/admin/AdminMasterData';
+import { AdminBusinessProfile } from './pages/admin/AdminBusinessProfile';
 import { AdminPromotions } from './pages/admin/AdminPromotions';
 import { AdminMediaLibrary } from './pages/admin/AdminMediaLibrary';
 import { AdminSettings } from './pages/admin/AdminSettings';
@@ -46,12 +48,14 @@ import { ToastProvider } from './components/ui/Toast';
 import { Register } from './pages/Register';
 
 import { StoreProvider } from './contexts/StoreContext';
+import { MasterDataProvider } from './contexts/MasterDataContext';
 
 export default function App() {
   return (
     <HelmetProvider>
       <ToastProvider>
         <StoreProvider>
+        <MasterDataProvider>
         <RetailerAuthProvider>
         <AdminAuthProvider>
           <SettingsProvider>
@@ -96,6 +100,8 @@ export default function App() {
                       <Route path="orders" element={<AdminOrders />} />
                       <Route path="orders/:id" element={<AdminOrderDetails />} />
                       <Route path="content" element={<AdminContent />} />
+                      <Route path="master-data" element={<AdminMasterData />} />
+                      <Route path="business-profile" element={<AdminBusinessProfile />} />
                       <Route path="promotions" element={<AdminPromotions />} />
                       <Route path="media" element={<AdminMediaLibrary />} />
                       <Route path="reports" element={<div className="p-8"><h1 className="text-2xl font-semibold">Reports</h1><p className="text-neutral-500 mt-2">Coming in Phase 2</p></div>} />
@@ -109,6 +115,7 @@ export default function App() {
         </SettingsProvider>
       </AdminAuthProvider>
       </RetailerAuthProvider>
+      </MasterDataProvider>
       </StoreProvider>
       </ToastProvider>
     </HelmetProvider>

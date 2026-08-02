@@ -1,10 +1,15 @@
 import React from 'react';
 import { Link } from 'react-router';
-import { Instagram, Facebook, Twitter, Mail, Phone, MapPin, MessageCircle } from 'lucide-react';
-import { useSettings } from '../../contexts/SettingsContext';
+import { Instagram, Facebook, Mail, Phone, MapPin, MessageCircle, FileText } from 'lucide-react';
+import { useMasterData } from '../../contexts/MasterDataContext';
 
 export function Footer() {
-  const { settings } = useSettings();
+  const { businessProfile } = useMasterData();
+
+  const logoSrc = businessProfile.footerLogoUrl || businessProfile.logoUrl;
+  const fullAddress = [businessProfile.address, businessProfile.city, businessProfile.state, businessProfile.pinCode]
+    .filter(Boolean)
+    .join(', ');
 
   return (
     <footer className="bg-background border-t border-border pt-16 pb-8">
@@ -12,39 +17,54 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
           {/* Brand Info */}
           <div className="flex flex-col gap-6">
-            {settings.storeInfo.logoUrl ? (
-              <img src={settings.storeInfo.logoUrl} alt={settings.storeInfo.name} className="h-10 max-w-[200px] object-contain" />
+            {logoSrc ? (
+              <img src={logoSrc} alt={businessProfile.brandName} className="h-10 max-w-[200px] object-contain" />
             ) : (
               <span className="font-serif font-bold text-3xl tracking-tighter uppercase">
-                {settings.storeInfo.name}
+                {businessProfile.brandName || businessProfile.businessName}
               </span>
             )}
             <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
-              {settings.storeInfo.aboutText}
+              {businessProfile.businessName} — Leading manufacturer and wholesaler of premium apparel.
             </p>
             <div className="flex gap-4 text-foreground/70">
-              {settings.social.instagram && <a href={settings.social.instagram} className="hover:text-foreground transition-colors" aria-label="Instagram" target="_blank" rel="noopener noreferrer"><Instagram className="w-5 h-5" /></a>}
-              {settings.social.facebook && <a href={settings.social.facebook} className="hover:text-foreground transition-colors" aria-label="Facebook" target="_blank" rel="noopener noreferrer"><Facebook className="w-5 h-5" /></a>}
-              {settings.social.twitter && <a href={settings.social.twitter} className="hover:text-foreground transition-colors" aria-label="Twitter" target="_blank" rel="noopener noreferrer"><Twitter className="w-5 h-5" /></a>}
+              {businessProfile.instagram && (
+                <a href={businessProfile.instagram} className="hover:text-foreground transition-colors" aria-label="Instagram" target="_blank" rel="noopener noreferrer">
+                  <Instagram className="w-5 h-5" />
+                </a>
+              )}
+              {businessProfile.facebook && (
+                <a href={businessProfile.facebook} className="hover:text-foreground transition-colors" aria-label="Facebook" target="_blank" rel="noopener noreferrer">
+                  <Facebook className="w-5 h-5" />
+                </a>
+              )}
             </div>
           </div>
 
           {/* Contact */}
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             <h4 className="text-[10px] font-bold uppercase tracking-[2px] mb-2 text-foreground/50">Contact Us</h4>
-            <a href={`tel:${settings.contact.phone.replace(/\s+/g, '')}`} className="flex items-center gap-3 text-sm text-muted-foreground hover:text-foreground transition-colors">
-              <Phone className="w-4 h-4" /> {settings.contact.phone}
-            </a>
-            <a href={`https://wa.me/${settings.contact.whatsapp.replace(/\D/g, '')}`} className="flex items-center gap-3 text-sm text-muted-foreground hover:text-foreground transition-colors" target="_blank" rel="noopener noreferrer">
-              <MessageCircle className="w-4 h-4" /> WhatsApp
-            </a>
-            <a href={`mailto:${settings.contact.email}`} className="flex items-center gap-3 text-sm text-muted-foreground hover:text-foreground transition-colors">
-              <Mail className="w-4 h-4" /> {settings.contact.email}
-            </a>
-            <div className="flex items-start gap-3 text-sm text-muted-foreground mt-2">
-              <MapPin className="w-4 h-4 mt-1 flex-shrink-0" />
-              <span>{settings.contact.address}</span>
-            </div>
+            {businessProfile.phone && (
+              <a href={`tel:${businessProfile.phone.replace(/\s+/g, '')}`} className="flex items-center gap-3 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <Phone className="w-4 h-4 flex-shrink-0" /> {businessProfile.phone}
+              </a>
+            )}
+            {businessProfile.whatsapp && (
+              <a href={`https://wa.me/${businessProfile.whatsapp.replace(/\D/g, '')}`} className="flex items-center gap-3 text-sm text-muted-foreground hover:text-foreground transition-colors" target="_blank" rel="noopener noreferrer">
+                <MessageCircle className="w-4 h-4 flex-shrink-0" /> WhatsApp
+              </a>
+            )}
+            {businessProfile.email && (
+              <a href={`mailto:${businessProfile.email}`} className="flex items-center gap-3 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <Mail className="w-4 h-4 flex-shrink-0" /> {businessProfile.email}
+              </a>
+            )}
+            {fullAddress && (
+              <div className="flex items-start gap-3 text-sm text-muted-foreground mt-1">
+                <MapPin className="w-4 h-4 mt-1 flex-shrink-0" />
+                <span>{fullAddress}</span>
+              </div>
+            )}
           </div>
 
           {/* Quick Links */}
@@ -56,21 +76,31 @@ export function Footer() {
             <Link to="/contact" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Help & Support</Link>
           </div>
 
-          {/* Legal */}
-          <div className="flex flex-col gap-4">
-            <h4 className="text-[10px] font-bold uppercase tracking-[2px] mb-2 text-foreground/50">Legal</h4>
-            <Link to="/terms" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Terms of Service</Link>
-            <Link to="/privacy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Privacy Policy</Link>
-            <Link to="/shipping" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Shipping Policy</Link>
-            <Link to="/returns" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Return Policy</Link>
+          {/* Business Credentials */}
+          <div className="flex flex-col gap-3">
+            <h4 className="text-[10px] font-bold uppercase tracking-[2px] mb-2 text-foreground/50">Business Credentials</h4>
+            {businessProfile.gstNumber && (
+              <div className="text-xs text-muted-foreground">
+                <span className="font-bold text-foreground">GSTIN:</span> {businessProfile.gstNumber}
+              </div>
+            )}
+            {businessProfile.udyamNumber && (
+              <div className="text-xs text-muted-foreground">
+                <span className="font-bold text-foreground">Udyam:</span> {businessProfile.udyamNumber}
+              </div>
+            )}
+            {businessProfile.supportEmail && (
+              <div className="text-xs text-muted-foreground">
+                <span className="font-bold text-foreground">Support:</span> {businessProfile.supportEmail}
+              </div>
+            )}
           </div>
         </div>
 
         <div className="border-t border-border pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-[11px] text-muted-foreground uppercase tracking-[1px]">
-          <p>{settings.storeInfo.footerText}</p>
+          <p>{businessProfile.copyrightText || `© 2026 ${businessProfile.businessName}. All rights reserved.`}</p>
           <div className="flex gap-6">
-            <span>GSTIN: 03AAAAA0000A1Z5</span>
-            <span>Udyam: UDYAM-PB-02-0000000</span>
+            <span>{businessProfile.businessName}</span>
           </div>
         </div>
       </div>

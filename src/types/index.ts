@@ -127,3 +127,64 @@ export interface AppNotification {
   createdAt: number;
   link?: string;
 }
+
+export interface MasterFabric {
+  id: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface MasterColor {
+  id: string;
+  name: string;
+  hexCode: string;
+  rgb: string;
+  displayOrder?: number;
+  isActive: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface MasterFit {
+  id: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface MasterLength {
+  id: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface BusinessProfile {
+  businessName: string;
+  brandName: string;
+  gstNumber: string;
+  udyamNumber: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  pinCode: string;
+  phone: string;
+  whatsapp: string;
+  email: string;
+  supportEmail: string;
+  website: string;
+  instagram: string;
+  facebook: string;
+  copyrightText: string;
+  logoUrl: string;
+  footerLogoUrl: string;
+  updatedAt?: number;
+}
