@@ -9,10 +9,12 @@ import { useRetailer } from '../../contexts/RetailerAuthContext';
 import { NotificationBell } from '../notifications/NotificationBell';
 import { useStore } from '../../contexts/StoreContext';
 import { useSettings } from '../../contexts/SettingsContext';
+import { useMasterData } from '../../contexts/MasterDataContext';
 import { getCategoryUrl } from '../../lib/utils';
 
 export function Header() {
   const { settings } = useSettings();
+  const { businessProfile } = useMasterData();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -23,6 +25,9 @@ export function Header() {
   const { totalSets } = useCart();
   const { retailer } = useRetailer();
   const { products, categories } = useStore();
+
+  const activeLogo = businessProfile?.logoUrl || settings.storeInfo?.logoUrl;
+  const activeBrandName = businessProfile?.brandName || businessProfile?.businessName || settings.storeInfo?.name || 'MNFR Wholesale';
 
   const isHome = location.pathname === '/';
 
@@ -84,15 +89,15 @@ export function Header() {
               <span className="sr-only">Toggle menu</span>
             </Button>
             <Link to="/" className="flex items-center space-x-2">
-              {settings.storeInfo.logoUrl ? (
-                <img src={settings.storeInfo.logoUrl} alt={settings.storeInfo.name} className="h-8 md:h-10 max-w-[180px] object-contain" />
+              {activeLogo ? (
+                <img src={activeLogo} alt={activeBrandName} className="h-8 md:h-10 max-w-[180px] object-contain" />
               ) : (
                 <>
                   <span className="font-serif font-bold text-2xl tracking-tighter uppercase hidden sm:inline-block">
-                    {settings.storeInfo.name || 'MNFR Wholesale'}
+                    {activeBrandName}
                   </span>
                   <span className="font-serif font-bold text-2xl tracking-tighter uppercase sm:hidden">
-                    {settings.storeInfo.name ? settings.storeInfo.name.substring(0, 4) : 'MNFR'}
+                    {activeBrandName ? activeBrandName.substring(0, 4) : 'MNFR'}
                   </span>
                 </>
               )}
