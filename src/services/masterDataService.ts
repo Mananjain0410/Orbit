@@ -159,6 +159,21 @@ export const masterDataService = {
 
   async deleteFabric(id: string): Promise<void> {
     const docRef = doc(db, 'master_fabrics', id);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      const fabricName = (snap.data().name || '').trim().toLowerCase();
+      if (fabricName) {
+        const productsRef = collection(db, 'products');
+        const productsSnap = await getDocs(productsRef);
+        const inUse = productsSnap.docs.some(d => {
+          const p = d.data();
+          return p.fabric && p.fabric.trim().toLowerCase() === fabricName;
+        });
+        if (inUse) {
+          throw new Error('Cannot delete this fabric because it is used by existing products.');
+        }
+      }
+    }
     await deleteDoc(docRef);
   },
 
@@ -228,6 +243,21 @@ export const masterDataService = {
 
   async deleteColor(id: string): Promise<void> {
     const docRef = doc(db, 'master_colors', id);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      const colorName = (snap.data().name || '').trim().toLowerCase();
+      if (colorName) {
+        const productsRef = collection(db, 'products');
+        const productsSnap = await getDocs(productsRef);
+        const inUse = productsSnap.docs.some(d => {
+          const p = d.data();
+          return Array.isArray(p.colors) && p.colors.some((c: any) => c.name && c.name.trim().toLowerCase() === colorName);
+        });
+        if (inUse) {
+          throw new Error('Cannot delete this color because it is currently assigned to products.');
+        }
+      }
+    }
     await deleteDoc(docRef);
   },
 
@@ -293,6 +323,21 @@ export const masterDataService = {
 
   async deleteFit(id: string): Promise<void> {
     const docRef = doc(db, 'master_fits', id);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      const fitName = (snap.data().name || '').trim().toLowerCase();
+      if (fitName) {
+        const productsRef = collection(db, 'products');
+        const productsSnap = await getDocs(productsRef);
+        const inUse = productsSnap.docs.some(d => {
+          const p = d.data();
+          return p.fit && p.fit.trim().toLowerCase() === fitName;
+        });
+        if (inUse) {
+          throw new Error('Cannot delete this fit because it is used by existing products.');
+        }
+      }
+    }
     await deleteDoc(docRef);
   },
 
@@ -358,6 +403,21 @@ export const masterDataService = {
 
   async deleteLength(id: string): Promise<void> {
     const docRef = doc(db, 'master_lengths', id);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      const lengthName = (snap.data().name || '').trim().toLowerCase();
+      if (lengthName) {
+        const productsRef = collection(db, 'products');
+        const productsSnap = await getDocs(productsRef);
+        const inUse = productsSnap.docs.some(d => {
+          const p = d.data();
+          return p.length && p.length.trim().toLowerCase() === lengthName;
+        });
+        if (inUse) {
+          throw new Error('Cannot delete this length because it is used by existing products.');
+        }
+      }
+    }
     await deleteDoc(docRef);
   }
 };

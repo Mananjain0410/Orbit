@@ -8,11 +8,15 @@ import { Category } from '../../types';
 import { uploadService } from '../../services/uploadService';
 import { auditLogService } from '../../services/auditLogService';
 import { useToast } from '../../components/ui/Toast';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 
 export function AdminCategories() {
   const { categories, products, updateCategory, addCategory, deleteCategory } = useAdminData();
   const [searchTerm, setSearchTerm] = useState('');
   const { showToast } = useToast();
+  
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Category>>({});
@@ -97,20 +101,28 @@ export function AdminCategories() {
     }
   };
 
-  const handleDelete = async (cat: Category) => {
+  const handleDeleteClick = (cat: Category) => {
     const count = getProductCount(cat.id);
     if (count > 0) {
-      alert(`Cannot delete category "${cat.name}" because it contains ${count} products. Please reassign or delete products first.`);
+      showToast(`Cannot delete this category because products are assigned to it.`, 'error');
       return;
     }
-    if (window.confirm(`Are you sure you want to delete category "${cat.name}"?`)) {
-      await deleteCategory(cat.id);
-      await auditLogService.logAction('category_deleted', `Deleted category: ${cat.name}`, cat.id);
-      if (cat.image) await uploadService.deleteImage(cat.image);
-      if (cat.thumbnail) await uploadService.deleteImage(cat.thumbnail);
-      if (cat.displayImage) await uploadService.deleteImage(cat.displayImage);
-      if (cat.mobileImage) await uploadService.deleteImage(cat.mobileImage);
-      showToast('Category deleted.', 'success');
+    setCategoryToDelete(cat);
+  };
+
+  const confirmDeleteCategory = async () => {
+    if (!categoryToDelete) return;
+    setIsDeleting(true);
+    try {
+      await deleteCategory(categoryToDelete.id);
+      await auditLogService.logAction('category_deleted', `Deleted category: ${categoryToDelete.name}`, categoryToDelete.id);
+      showToast('Category deleted successfully.', 'success');
+      setCategoryToDelete(null);
+    } catch (err: any) {
+      console.error('Failed to delete category:', err);
+      showToast(err.message || 'Failed to delete category.', 'error');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -341,7 +353,7 @@ export function AdminCategories() {
                               <Edit2 className="w-4 h-4" />
                             </button>
                             <button 
-                              onClick={() => handleDelete(cat)}
+                              onClick={() => handleDeleteClick(cat)}
                               className="p-1.5 hover:bg-red-50 text-red-600 rounded"
                               title="Delete Category"
                             >
@@ -358,6 +370,17 @@ export function AdminCategories() {
           </table>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={!!categoryToDelete}
+        onClose={() => setCategoryToDelete(null)}
+        onConfirm={confirmDeleteCategory}
+        title="Delete Category?"
+        description={`Are you sure you want to delete category "${categoryToDelete?.name || ''}"? This action cannot be undone.`}
+        confirmText="Delete"
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

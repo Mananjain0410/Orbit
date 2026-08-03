@@ -9,10 +9,13 @@ import {
   Square, Download, Trash2, Edit2, Eye, EyeOff, Image as ImageIcon
 } from 'lucide-react';
 import { Product } from '../../types';
+import { useToast } from '../../components/ui/Toast';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 
 export function AdminProducts() {
-  const { products, categories, bulkUpdateProducts, bulkDeleteProducts } = useAdminData();
+  const { products, categories, deleteProduct, bulkUpdateProducts, bulkDeleteProducts } = useAdminData();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -21,6 +24,10 @@ export function AdminProducts() {
   
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [categoryFilter, setCategoryFilter] = useState<string>('All');
+
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Filtering & Sorting Logic
   const filteredProducts = useMemo(() => {
@@ -82,20 +89,53 @@ export function AdminProducts() {
     setSelectedIds(newSet);
   };
 
-  const handleBulkAction = (action: string) => {
+  const handleBulkAction = async (action: string) => {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
     
     if (action === 'publish') {
-      bulkUpdateProducts(ids, { status: 'Published' });
+      await bulkUpdateProducts(ids, { status: 'Published' });
+      showToast(`${ids.length} product(s) published!`, 'success');
+      setSelectedIds(new Set());
     } else if (action === 'draft') {
-      bulkUpdateProducts(ids, { status: 'Draft' });
+      await bulkUpdateProducts(ids, { status: 'Draft' });
+      showToast(`${ids.length} product(s) marked as draft.`, 'success');
+      setSelectedIds(new Set());
     } else if (action === 'delete') {
-      if (window.confirm(`Are you sure you want to delete ${ids.length} products?`)) {
-        bulkDeleteProducts(ids);
-      }
+      setIsBulkDeleteOpen(true);
     }
-    setSelectedIds(new Set());
+  };
+
+  const confirmSingleDelete = async () => {
+    if (!productToDelete) return;
+    setIsDeleting(true);
+    try {
+      await deleteProduct(productToDelete.id);
+      showToast(`Product "${productToDelete.patternNumber}" deleted successfully.`, 'success');
+      setProductToDelete(null);
+    } catch (err: any) {
+      console.error('Failed deleting product:', err);
+      showToast(err.message || 'Failed to delete product.', 'error');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const confirmBulkDelete = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    setIsDeleting(true);
+    try {
+      await bulkDeleteProducts(ids);
+      showToast(`${ids.length} selected product(s) deleted successfully.`, 'success');
+      setSelectedIds(new Set());
+      setIsBulkDeleteOpen(false);
+    } catch (err: any) {
+      console.error('Failed bulk deleting products:', err);
+      showToast(err.message || 'Failed to delete selected products.', 'error');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const getCategoryName = (id: string) => categories.find(c => c.id === id)?.name || 'Unknown';
@@ -274,6 +314,16 @@ export function AdminProducts() {
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
+                        <button 
+                          className="p-1.5 text-red-500 hover:text-red-700 rounded-md hover:bg-red-50 transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setProductToDelete(product);
+                          }}
+                          title="Delete Product"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -283,6 +333,29 @@ export function AdminProducts() {
           </table>
         </div>
       </div>
+
+      {/* Confirmation Dialogs */}
+      <ConfirmDialog
+        isOpen={!!productToDelete}
+        onClose={() => setProductToDelete(null)}
+        onConfirm={confirmSingleDelete}
+        title="Delete Product?"
+        description={`Are you sure you want to delete product "${productToDelete?.patternNumber || ''}"? This action cannot be undone.`}
+        confirmText="Delete"
+        variant="danger"
+        isLoading={isDeleting}
+      />
+
+      <ConfirmDialog
+        isOpen={isBulkDeleteOpen}
+        onClose={() => setIsBulkDeleteOpen(false)}
+        onConfirm={confirmBulkDelete}
+        title="Delete Selected Products?"
+        description={`Are you sure you want to permanently delete ${selectedIds.size} selected products? This action cannot be undone.`}
+        confirmText="Delete Selected"
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

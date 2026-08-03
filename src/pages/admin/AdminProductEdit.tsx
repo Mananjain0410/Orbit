@@ -12,11 +12,14 @@ import {
 import { Product, ProductColor } from '../../types';
 import { uploadService } from '../../services/uploadService';
 import { useToast } from '../../components/ui/Toast';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 
 export function AdminProductEdit() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { products, categories, updateProduct, addProduct } = useAdminData();
+  const { products, categories, updateProduct, addProduct, deleteProduct } = useAdminData();
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { 
     fabrics, 
     colors: masterColors, 
@@ -252,6 +255,22 @@ export function AdminProductEdit() {
     showToast('Primary thumbnail updated.', 'success');
   };
 
+  const handleDeleteProduct = async () => {
+    if (!id || isNew) return;
+    setIsDeleting(true);
+    try {
+      await deleteProduct(id);
+      showToast('Product deleted successfully.', 'success');
+      navigate('/admin/products');
+    } catch (err: any) {
+      console.error('Failed to delete product:', err);
+      showToast(err.message || 'Failed to delete product.', 'error');
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
+    }
+  };
+
   // --- SAVE / PUBLISH HANDLER ---
   const handleSave = async (statusOverride?: 'Published' | 'Draft' | 'Hidden') => {
     if (!formData.patternNumber || formData.patternNumber.trim() === '') {
@@ -381,12 +400,20 @@ export function AdminProductEdit() {
         
         <div className="flex items-center gap-2">
           {!isNew && (
-            <Button 
-              variant="outline" 
-              onClick={() => window.open(`/product/${id}`, '_blank')}
-            >
-              <Eye className="w-4 h-4 mr-1.5" /> Retailer Preview
-            </Button>
+            <>
+              <Button 
+                variant="outline" 
+                onClick={() => window.open(`/product/${id}`, '_blank')}
+              >
+                <Eye className="w-4 h-4 mr-1.5" /> Retailer Preview
+              </Button>
+              <Button 
+                variant="destructive"
+                onClick={() => setIsDeleteModalOpen(true)}
+              >
+                <Trash2 className="w-4 h-4 mr-1.5" /> Delete
+              </Button>
+            </>
           )}
           <Button 
             variant="outline"
@@ -985,6 +1012,16 @@ export function AdminProductEdit() {
         </div>
       )}
 
+      <ConfirmDialog
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleDeleteProduct}
+        title="Delete Product?"
+        description={`Are you sure you want to delete product "${formData.patternNumber || ''}"? All inventory records and images will be permanently removed.`}
+        confirmText="Delete Product"
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

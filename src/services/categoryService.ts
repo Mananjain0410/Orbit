@@ -3,6 +3,8 @@ import { db } from '../firebase/config';
 import { Category } from '../types';
 import { slugify } from '../lib/utils';
 
+import { uploadService } from './uploadService';
+
 export const categoryService = {
   subscribeToAllCategories(includeHidden: boolean = false, callback: (categories: Category[]) => void): () => void {
     const categoriesRef = collection(db, 'categories');
@@ -112,7 +114,42 @@ export const categoryService = {
 
   async deleteCategory(id: string): Promise<void> {
     try {
-      await deleteDoc(doc(db, 'categories', id));
+      // 1. Fetch category doc to check details and image URLs
+      const catRef = doc(db, 'categories', id);
+      const catSnap = await getDoc(catRef);
+      if (!catSnap.exists()) return;
+      const catData = catSnap.data() as Category;
+
+      // 2. Dependency check: check if any products are assigned to this category
+      const productsRef = collection(db, 'products');
+      const qById = query(productsRef, where('categoryId', '==', id));
+      const productsSnap = await getDocs(qById);
+
+      let isAssigned = !productsSnap.empty;
+      if (!isAssigned && catData.name) {
+        const qByName = query(productsRef, where('categoryName', '==', catData.name));
+        const productsByNameSnap = await getDocs(qByName);
+        if (!productsByNameSnap.empty) {
+          isAssigned = true;
+        }
+      }
+
+      if (isAssigned) {
+        throw new Error('Cannot delete this category because products are assigned to it.');
+      }
+
+      // 3. Clean up image files from Firebase Storage if present
+      const imagesToDelete = [catData.image, catData.thumbnail, (catData as any).displayImage, (catData as any).mobileImage].filter(Boolean) as string[];
+      for (const imgUrl of imagesToDelete) {
+        try {
+          await uploadService.deleteImage(imgUrl);
+        } catch (e) {
+          console.warn('Failed to delete image from storage:', imgUrl, e);
+        }
+      }
+
+      // 4. Delete the category document
+      await deleteDoc(catRef);
     } catch (error) {
       console.error('Error deleting category:', error);
       throw error;

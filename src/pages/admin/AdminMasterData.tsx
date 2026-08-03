@@ -7,6 +7,7 @@ import { Plus, Search, Edit2, Trash2, Eye, EyeOff, Check, X, Palette, Layers, Sc
 import { MasterFabric, MasterColor, MasterFit, MasterLength } from '../../types';
 import { useToast } from '../../components/ui/Toast';
 import { auditLogService } from '../../services/auditLogService';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 
 type TabType = 'fabrics' | 'colors' | 'fits' | 'lengths';
 
@@ -33,6 +34,10 @@ export function AdminMasterData() {
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<TabType>('fabrics');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Delete State
+  const [itemToDelete, setItemToDelete] = useState<{ type: TabType; item: any } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Active Edit State
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -97,18 +102,6 @@ export function AdminMasterData() {
     }
   };
 
-  const handleDeleteFabric = async (item: MasterFabric) => {
-    if (window.confirm(`Are you sure you want to delete fabric "${item.name}"?`)) {
-      try {
-        await deleteFabric(item.id);
-        await auditLogService.logAction('master_fabric_deleted', `Deleted Fabric: ${item.name}`);
-        showToast('Fabric deleted.', 'success');
-      } catch (err) {
-        handleActionError(err);
-      }
-    }
-  };
-
   // --- COLOR HANDLERS ---
   const handleAddColor = async () => {
     if (!addForm.name?.trim()) {
@@ -153,18 +146,6 @@ export function AdminMasterData() {
     }
   };
 
-  const handleDeleteColor = async (item: MasterColor) => {
-    if (window.confirm(`Are you sure you want to delete color "${item.name}"?`)) {
-      try {
-        await deleteColor(item.id);
-        await auditLogService.logAction('master_color_deleted', `Deleted Color: ${item.name}`);
-        showToast('Color deleted.', 'success');
-      } catch (err) {
-        handleActionError(err);
-      }
-    }
-  };
-
   // --- FIT HANDLERS ---
   const handleAddFit = async () => {
     if (!addForm.name?.trim()) {
@@ -202,18 +183,6 @@ export function AdminMasterData() {
       setEditingId(null);
     } catch (err) {
       handleActionError(err);
-    }
-  };
-
-  const handleDeleteFit = async (item: MasterFit) => {
-    if (window.confirm(`Are you sure you want to delete fit "${item.name}"?`)) {
-      try {
-        await deleteFit(item.id);
-        await auditLogService.logAction('master_fit_deleted', `Deleted Fit: ${item.name}`);
-        showToast('Fit deleted.', 'success');
-      } catch (err) {
-        handleActionError(err);
-      }
     }
   };
 
@@ -257,15 +226,49 @@ export function AdminMasterData() {
     }
   };
 
-  const handleDeleteLength = async (item: MasterLength) => {
-    if (window.confirm(`Are you sure you want to delete length "${item.name}"?`)) {
-      try {
+  const handleDeleteFabric = (item: MasterFabric) => {
+    setItemToDelete({ type: 'fabrics', item });
+  };
+
+  const handleDeleteColor = (item: MasterColor) => {
+    setItemToDelete({ type: 'colors', item });
+  };
+
+  const handleDeleteFit = (item: MasterFit) => {
+    setItemToDelete({ type: 'fits', item });
+  };
+
+  const handleDeleteLength = (item: MasterLength) => {
+    setItemToDelete({ type: 'lengths', item });
+  };
+
+  const confirmDeleteMasterItem = async () => {
+    if (!itemToDelete) return;
+    const { type, item } = itemToDelete;
+    setIsDeleting(true);
+    try {
+      if (type === 'fabrics') {
+        await deleteFabric(item.id);
+        await auditLogService.logAction('master_fabric_deleted', `Deleted Fabric: ${item.name}`);
+        showToast('Fabric deleted successfully.', 'success');
+      } else if (type === 'colors') {
+        await deleteColor(item.id);
+        await auditLogService.logAction('master_color_deleted', `Deleted Color: ${item.name}`);
+        showToast('Color deleted successfully.', 'success');
+      } else if (type === 'fits') {
+        await deleteFit(item.id);
+        await auditLogService.logAction('master_fit_deleted', `Deleted Fit: ${item.name}`);
+        showToast('Fit deleted successfully.', 'success');
+      } else if (type === 'lengths') {
         await deleteLength(item.id);
         await auditLogService.logAction('master_length_deleted', `Deleted Length: ${item.name}`);
-        showToast('Length deleted.', 'success');
-      } catch (err) {
-        handleActionError(err);
+        showToast('Length deleted successfully.', 'success');
       }
+      setItemToDelete(null);
+    } catch (err: any) {
+      handleActionError(err);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -673,6 +676,17 @@ export function AdminMasterData() {
           </table>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={!!itemToDelete}
+        onClose={() => setItemToDelete(null)}
+        onConfirm={confirmDeleteMasterItem}
+        title={`Delete ${itemToDelete?.type.slice(0, -1) || 'Item'}?`}
+        description={`Are you sure you want to delete ${itemToDelete?.type.slice(0, -1) || 'item'} "${itemToDelete?.item.name || ''}"?`}
+        confirmText="Delete"
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

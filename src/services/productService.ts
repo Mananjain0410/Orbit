@@ -3,6 +3,7 @@ import { db } from '../firebase/config';
 import { Product } from '../types';
 import { inventoryService } from './inventoryService';
 import { categoryService } from './categoryService';
+import { uploadService } from './uploadService';
 
 export const productService = {
   subscribeToAllProducts(includeHidden: boolean = false, callback: (products: Product[]) => void): () => void {
@@ -132,6 +133,37 @@ export const productService = {
 
   async deleteProduct(id: string): Promise<void> {
     try {
+      // 1. Fetch product document
+      const product = await this.getProductById(id);
+      
+      if (product) {
+        // 2. Clean up product images from Firebase Storage
+        if (Array.isArray(product.images)) {
+          for (const imgUrl of product.images) {
+            if (imgUrl) {
+              try {
+                await uploadService.deleteImage(imgUrl);
+              } catch (e) {
+                console.warn('Failed to delete product image from storage:', imgUrl, e);
+              }
+            }
+          }
+        }
+
+        // 3. Clean up related inventory documents in Firestore
+        try {
+          const inventoryRef = collection(db, 'inventory');
+          const q = query(inventoryRef, where('productId', '==', id));
+          const invSnap = await getDocs(q);
+          for (const invDoc of invSnap.docs) {
+            await deleteDoc(doc(db, 'inventory', invDoc.id));
+          }
+        } catch (invErr) {
+          console.warn('Failed to clean up product inventory records:', invErr);
+        }
+      }
+
+      // 4. Delete product document from Firestore
       await deleteDoc(doc(db, 'products', id));
     } catch (error) {
       console.error('Error deleting product:', error);

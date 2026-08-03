@@ -36,7 +36,7 @@ export function Footer() {
               <img src={logoSrc} alt={businessProfile.brandName} className="h-10 max-w-[200px] object-contain" />
             ) : (
               <span className="font-serif font-bold text-3xl tracking-tighter uppercase">
-                {businessProfile.brandName || businessProfile.businessName}
+                {businessProfile.brandName}
               </span>
             )}
             <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">

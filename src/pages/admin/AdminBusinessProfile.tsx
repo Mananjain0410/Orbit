@@ -3,9 +3,8 @@ import { SEO } from '../../components/SEO';
 import { useMasterData } from '../../contexts/MasterDataContext';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Building2, Save, Upload, Image as ImageIcon, CheckCircle, Globe, Phone, Mail, FileText, Share2 } from 'lucide-react';
+import { Building2, Save, CheckCircle, Globe, Phone, Mail, FileText, Share2 } from 'lucide-react';
 import { useToast } from '../../components/ui/Toast';
-import { uploadService } from '../../services/uploadService';
 import { auditLogService } from '../../services/auditLogService';
 
 export function AdminBusinessProfile() {
@@ -13,33 +12,12 @@ export function AdminBusinessProfile() {
   const { showToast } = useToast();
   const [formData, setFormData] = useState(businessProfile);
   const [isSaving, setIsSaving] = useState(false);
-  const [uploadingLogo, setUploadingLogo] = useState<'logo' | 'footerLogo' | null>(null);
 
   useEffect(() => {
     if (businessProfile) {
       setFormData(businessProfile);
     }
   }, [businessProfile]);
-
-  const handleLogoUpload = async (file: File, field: 'logoUrl' | 'footerLogoUrl') => {
-    const validation = uploadService.validateImageFile(file);
-    if (!validation.valid) {
-      showToast(validation.error || 'Invalid image file.', 'error');
-      return;
-    }
-
-    setUploadingLogo(field === 'logoUrl' ? 'logo' : 'footerLogo');
-    try {
-      const url = await uploadService.uploadImage(file, 'business_profile');
-      setFormData(prev => ({ ...prev, [field]: url }));
-      showToast('Logo uploaded successfully!', 'success');
-    } catch (err) {
-      console.error('Logo upload error:', err);
-      showToast('Failed to upload logo image.', 'error');
-    } finally {
-      setUploadingLogo(null);
-    }
-  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,7 +30,7 @@ export function AdminBusinessProfile() {
     try {
       await updateBusinessProfile(formData);
       await auditLogService.logAction('business_profile_updated', `Updated Business Profile for ${formData.businessName}`);
-      showToast('Business Profile saved successfully! All footer and brand instances updated.', 'success');
+      showToast('Business Profile saved successfully!', 'success');
     } catch (err) {
       console.error('Save business profile error:', err);
       showToast('Failed to save business profile.', 'error');
@@ -79,11 +57,11 @@ export function AdminBusinessProfile() {
       </div>
 
       <form onSubmit={handleSave} className="space-y-8">
-        {/* SECTION 1: Identity & Logos */}
+        {/* SECTION 1: Identity */}
         <div className="bg-card border border-border rounded-xl p-6 shadow-sm space-y-6">
           <div className="flex items-center gap-2 border-b border-border pb-3">
             <Building2 className="w-5 h-5 text-neutral-800" />
-            <h2 className="text-base font-bold tracking-tight">1. Business Identity & Logos</h2>
+            <h2 className="text-base font-bold tracking-tight">1. Business Identity</h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -105,52 +83,6 @@ export function AdminBusinessProfile() {
                 placeholder="e.g. MNFR Wholesale"
                 required
               />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
-            {/* Main Header Logo */}
-            <div className="border border-border rounded-lg p-4 bg-muted/10 space-y-3">
-              <span className="text-xs font-bold uppercase tracking-[0.5px] text-foreground block">Primary Brand Logo</span>
-              <div className="h-24 bg-background border border-border rounded flex items-center justify-center overflow-hidden p-2">
-                {formData.logoUrl ? (
-                  <img src={formData.logoUrl} alt="Main Logo" className="max-h-full max-w-full object-contain" />
-                ) : (
-                  <span className="text-xs text-muted-foreground italic flex items-center gap-1.5"><ImageIcon className="w-4 h-4" /> No Header Logo</span>
-                )}
-              </div>
-              <label className="cursor-pointer bg-background border border-input hover:bg-muted text-xs py-2 px-3 rounded w-full flex items-center justify-center gap-2 font-medium">
-                <Upload className="w-4 h-4" /> 
-                {uploadingLogo === 'logo' ? 'Uploading...' : 'Upload Header Logo'}
-                <input 
-                  type="file" 
-                  accept="image/png, image/jpeg, image/svg+xml, image/webp" 
-                  onChange={e => e.target.files?.[0] && handleLogoUpload(e.target.files[0], 'logoUrl')} 
-                  className="hidden" 
-                />
-              </label>
-            </div>
-
-            {/* Footer / Monochrome Logo */}
-            <div className="border border-border rounded-lg p-4 bg-muted/10 space-y-3">
-              <span className="text-xs font-bold uppercase tracking-[0.5px] text-foreground block">Footer / Dark-Theme Logo</span>
-              <div className="h-24 bg-neutral-900 border border-border rounded flex items-center justify-center overflow-hidden p-2">
-                {formData.footerLogoUrl || formData.logoUrl ? (
-                  <img src={formData.footerLogoUrl || formData.logoUrl} alt="Footer Logo" className="max-h-full max-w-full object-contain" />
-                ) : (
-                  <span className="text-xs text-neutral-400 italic flex items-center gap-1.5"><ImageIcon className="w-4 h-4" /> No Footer Logo</span>
-                )}
-              </div>
-              <label className="cursor-pointer bg-background border border-input hover:bg-muted text-xs py-2 px-3 rounded w-full flex items-center justify-center gap-2 font-medium">
-                <Upload className="w-4 h-4" /> 
-                {uploadingLogo === 'footerLogo' ? 'Uploading...' : 'Upload Footer Logo'}
-                <input 
-                  type="file" 
-                  accept="image/png, image/jpeg, image/svg+xml, image/webp" 
-                  onChange={e => e.target.files?.[0] && handleLogoUpload(e.target.files[0], 'footerLogoUrl')} 
-                  className="hidden" 
-                />
-              </label>
             </div>
           </div>
         </div>
