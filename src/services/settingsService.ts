@@ -10,6 +10,15 @@ export interface PromoBanner {
 }
 
 export interface AppSettings {
+  headerBranding?: {
+    type: 'text' | 'image';
+    text: string;
+    imageUrl?: string;
+  };
+  footerBranding?: {
+    brandLogo1Url?: string;
+    brandLogo2Url?: string;
+  };
   contact: {
     email: string;
     phone: string;
@@ -62,6 +71,15 @@ export interface AppSettings {
 }
 
 export const defaultSettings: AppSettings = {
+  headerBranding: {
+    type: 'text',
+    text: 'Shree Nakoda Fashion',
+    imageUrl: '',
+  },
+  footerBranding: {
+    brandLogo1Url: '',
+    brandLogo2Url: '',
+  },
   contact: {
     email: 'wholesale@mnfr.in',
     phone: '+91 98765 43210',
@@ -169,6 +187,15 @@ function mergeSettings(data: any): AppSettings {
     : (defaultSettings.homepage.heroImages || []);
 
   return {
+    headerBranding: {
+      type: (data.headerBranding?.type === 'image' ? 'image' : 'text') as 'text' | 'image',
+      text: String(data.headerBranding?.text ?? defaultSettings.headerBranding?.text ?? 'Shree Nakoda Fashion'),
+      imageUrl: String(data.headerBranding?.imageUrl ?? ''),
+    },
+    footerBranding: {
+      brandLogo1Url: String(data.footerBranding?.brandLogo1Url ?? ''),
+      brandLogo2Url: String(data.footerBranding?.brandLogo2Url ?? ''),
+    },
     contact: {
       email: String(data.contact?.email ?? defaultSettings.contact.email),
       phone: String(data.contact?.phone ?? defaultSettings.contact.phone),

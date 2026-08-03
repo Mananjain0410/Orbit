@@ -2,9 +2,14 @@ import React from 'react';
 import { Link } from 'react-router';
 import { Instagram, Facebook, Mail, Phone, MapPin, MessageCircle, FileText } from 'lucide-react';
 import { useMasterData } from '../../contexts/MasterDataContext';
+import { useSettings } from '../../contexts/SettingsContext';
 
 export function Footer() {
   const { businessProfile } = useMasterData();
+  const { settings } = useSettings();
+
+  const brandLogo1 = settings.footerBranding?.brandLogo1Url;
+  const brandLogo2 = settings.footerBranding?.brandLogo2Url;
 
   const logoSrc = businessProfile.footerLogoUrl || businessProfile.logoUrl;
   const fullAddress = [businessProfile.address, businessProfile.city, businessProfile.state, businessProfile.pinCode]
@@ -17,6 +22,16 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
           {/* Brand Info */}
           <div className="flex flex-col gap-6">
+            {(brandLogo1 || brandLogo2) && (
+              <div className="flex flex-col sm:flex-row items-center justify-start gap-6">
+                {brandLogo1 && (
+                  <img src={brandLogo1} alt="Pool Club Logo" className="max-h-[50px] w-auto object-contain" />
+                )}
+                {brandLogo2 && (
+                  <img src={brandLogo2} alt="KNC Logo" className="max-h-[50px] w-auto object-contain" />
+                )}
+              </div>
+            )}
             {logoSrc ? (
               <img src={logoSrc} alt={businessProfile.brandName} className="h-10 max-w-[200px] object-contain" />
             ) : (

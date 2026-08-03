@@ -26,8 +26,12 @@ export function Header() {
   const { retailer } = useRetailer();
   const { products, categories } = useStore();
 
-  const activeLogo = businessProfile?.logoUrl || settings.storeInfo?.logoUrl;
-  const activeBrandName = businessProfile?.brandName || businessProfile?.businessName || settings.storeInfo?.name || 'MNFR Wholesale';
+  const headerBranding = settings.headerBranding || {
+    type: 'text',
+    text: 'Shree Nakoda Fashion',
+    imageUrl: '',
+  };
+  const headerText = headerBranding.text || 'Shree Nakoda Fashion';
 
   const isHome = location.pathname === '/';
 
@@ -89,17 +93,12 @@ export function Header() {
               <span className="sr-only">Toggle menu</span>
             </Button>
             <Link to="/" className="flex items-center space-x-2">
-              {activeLogo ? (
-                <img src={activeLogo} alt={activeBrandName} className="h-8 md:h-10 max-w-[180px] object-contain" />
+              {headerBranding.type === 'image' && headerBranding.imageUrl ? (
+                <img src={headerBranding.imageUrl} alt={headerText} className="h-8 md:h-10 max-w-[220px] object-contain" />
               ) : (
-                <>
-                  <span className="font-serif font-bold text-2xl tracking-tighter uppercase hidden sm:inline-block">
-                    {activeBrandName}
-                  </span>
-                  <span className="font-serif font-bold text-2xl tracking-tighter uppercase sm:hidden">
-                    {activeBrandName ? activeBrandName.substring(0, 4) : 'MNFR'}
-                  </span>
-                </>
+                <span className="font-bold text-xl md:text-2xl text-foreground tracking-tight h-8 md:h-10 flex items-center">
+                  {headerText}
+                </span>
               )}
             </Link>
           </div>
