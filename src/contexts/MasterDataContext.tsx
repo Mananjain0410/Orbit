@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { MasterFabric, MasterColor, MasterFit, MasterLength, BusinessProfile } from '../types';
+import { MasterFabric, MasterColor, MasterFit, MasterLength, MasterSize, BusinessProfile } from '../types';
 import { masterDataService, defaultBusinessProfile } from '../services/masterDataService';
 
 interface MasterDataContextType {
@@ -7,6 +7,7 @@ interface MasterDataContextType {
   colors: MasterColor[];
   fits: MasterFit[];
   lengths: MasterLength[];
+  sizes: MasterSize[];
   businessProfile: BusinessProfile;
   refreshMasterData: () => Promise<void>;
   addFabric: (fabric: { name: string; description?: string; isActive?: boolean }) => Promise<MasterFabric>;
@@ -21,6 +22,9 @@ interface MasterDataContextType {
   addLength: (length: { name: string; description?: string; isActive?: boolean }) => Promise<MasterLength>;
   updateLength: (id: string, updates: Partial<MasterLength>) => Promise<void>;
   deleteLength: (id: string) => Promise<void>;
+  addSize: (size: { name: string; description?: string; displayOrder?: number; isActive?: boolean }) => Promise<MasterSize>;
+  updateSize: (id: string, updates: Partial<MasterSize>) => Promise<void>;
+  deleteSize: (id: string) => Promise<void>;
   updateBusinessProfile: (profile: Partial<BusinessProfile>) => Promise<void>;
 }
 
@@ -31,6 +35,7 @@ export function MasterDataProvider({ children }: { children: React.ReactNode }) 
   const [colors, setColors] = useState<MasterColor[]>([]);
   const [fits, setFits] = useState<MasterFit[]>([]);
   const [lengths, setLengths] = useState<MasterLength[]>([]);
+  const [sizes, setSizes] = useState<MasterSize[]>([]);
   const [businessProfile, setBusinessProfile] = useState<BusinessProfile>(defaultBusinessProfile);
 
   useEffect(() => {
@@ -39,6 +44,7 @@ export function MasterDataProvider({ children }: { children: React.ReactNode }) 
     const unsubColors = masterDataService.subscribeColors((c) => setColors(c));
     const unsubFits = masterDataService.subscribeFits((ft) => setFits(ft));
     const unsubLengths = masterDataService.subscribeLengths((l) => setLengths(l));
+    const unsubSizes = masterDataService.subscribeSizes((s) => setSizes(s));
 
     return () => {
       unsubProfile();
@@ -46,21 +52,24 @@ export function MasterDataProvider({ children }: { children: React.ReactNode }) 
       unsubColors();
       unsubFits();
       unsubLengths();
+      unsubSizes();
     };
   }, []);
 
   const refreshMasterData = async () => {
-    const [f, c, ft, l, p] = await Promise.all([
+    const [f, c, ft, l, sz, p] = await Promise.all([
       masterDataService.getFabrics(),
       masterDataService.getColors(),
       masterDataService.getFits(),
       masterDataService.getLengths(),
+      masterDataService.getSizes(),
       masterDataService.getBusinessProfile()
     ]);
     setFabrics(f);
     setColors(c);
     setFits(ft);
     setLengths(l);
+    setSizes(sz);
     setBusinessProfile(p);
   };
 
@@ -116,6 +125,19 @@ export function MasterDataProvider({ children }: { children: React.ReactNode }) 
     await masterDataService.deleteLength(id);
   };
 
+  const addSize = async (size: { name: string; description?: string; displayOrder?: number; isActive?: boolean }) => {
+    const newSize = await masterDataService.addSize(size);
+    return newSize;
+  };
+
+  const updateSize = async (id: string, updates: Partial<MasterSize>) => {
+    await masterDataService.updateSize(id, updates);
+  };
+
+  const deleteSize = async (id: string) => {
+    await masterDataService.deleteSize(id);
+  };
+
   const updateBusinessProfile = async (profile: Partial<BusinessProfile>) => {
     await masterDataService.updateBusinessProfile(profile);
   };
@@ -126,6 +148,7 @@ export function MasterDataProvider({ children }: { children: React.ReactNode }) 
       colors,
       fits,
       lengths,
+      sizes,
       businessProfile,
       refreshMasterData,
       addFabric,
@@ -140,6 +163,9 @@ export function MasterDataProvider({ children }: { children: React.ReactNode }) 
       addLength,
       updateLength,
       deleteLength,
+      addSize,
+      updateSize,
+      deleteSize,
       updateBusinessProfile
     }}>
       {children}

@@ -35,7 +35,9 @@ export function AdminInventory() {
           colorName: c.name,
           hex: c.hex,
           stock: c.stock || 0,
-          sizes: p.sizes,
+          sizes: (p.availableSizes && p.availableSizes.length > 0) 
+            ? p.availableSizes 
+            : (p.sizes && p.sizes.length > 0 ? p.sizes : ['S', 'M', 'L', 'XL']),
           updatedAt: p.updatedAt,
           productImage: p.images[0]
         });

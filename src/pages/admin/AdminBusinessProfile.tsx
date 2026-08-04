@@ -70,7 +70,7 @@ export function AdminBusinessProfile() {
               <Input 
                 value={formData.businessName || ''}
                 onChange={e => setFormData({ ...formData, businessName: e.target.value })}
-                placeholder="e.g. MNFR Clothing Private Limited"
+                placeholder="e.g. Registered Business Name"
                 required
               />
             </div>
@@ -80,7 +80,6 @@ export function AdminBusinessProfile() {
               <Input 
                 value={formData.brandName || ''}
                 onChange={e => setFormData({ ...formData, brandName: e.target.value })}
-                placeholder="e.g. MNFR Wholesale"
                 required
               />
             </div>
@@ -204,7 +203,7 @@ export function AdminBusinessProfile() {
                 type="email"
                 value={formData.email || ''}
                 onChange={e => setFormData({ ...formData, email: e.target.value })}
-                placeholder="wholesale@mnfr.in"
+                placeholder="wholesale@yourcompany.com"
               />
             </div>
 
@@ -214,7 +213,7 @@ export function AdminBusinessProfile() {
                 type="email"
                 value={formData.supportEmail || ''}
                 onChange={e => setFormData({ ...formData, supportEmail: e.target.value })}
-                placeholder="support@mnfr.in"
+                placeholder="support@yourcompany.com"
               />
             </div>
 
@@ -223,7 +222,7 @@ export function AdminBusinessProfile() {
               <Input 
                 value={formData.website || ''}
                 onChange={e => setFormData({ ...formData, website: e.target.value })}
-                placeholder="https://mnfr.in"
+                placeholder="https://yourcompany.com"
               />
             </div>
           </div>
@@ -242,7 +241,7 @@ export function AdminBusinessProfile() {
               <Input 
                 value={formData.instagram || ''}
                 onChange={e => setFormData({ ...formData, instagram: e.target.value })}
-                placeholder="https://instagram.com/mnfr_wholesale"
+                placeholder="https://instagram.com/your_brand"
               />
             </div>
 
@@ -251,7 +250,7 @@ export function AdminBusinessProfile() {
               <Input 
                 value={formData.facebook || ''}
                 onChange={e => setFormData({ ...formData, facebook: e.target.value })}
-                placeholder="https://facebook.com/mnfr_wholesale"
+                placeholder="https://facebook.com/your_brand"
               />
             </div>
 
@@ -260,7 +259,7 @@ export function AdminBusinessProfile() {
               <Input 
                 value={formData.copyrightText || ''}
                 onChange={e => setFormData({ ...formData, copyrightText: e.target.value })}
-                placeholder="© 2026 MNFR Clothing. All rights reserved."
+                placeholder="© 2026 Your Business Name. All rights reserved."
               />
             </div>
           </div>

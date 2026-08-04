@@ -58,7 +58,7 @@ export function AdminContent() {
       ...prev,
       headerBranding: {
         type,
-        text: prev.headerBranding?.text || 'Shree Nakoda Fashion',
+        text: prev.headerBranding?.text || '',
         imageUrl: prev.headerBranding?.imageUrl || '',
       }
     }));
@@ -94,7 +94,7 @@ export function AdminContent() {
         ...prev,
         headerBranding: {
           type: prev.headerBranding?.type || 'text',
-          text: prev.headerBranding?.text || 'Shree Nakoda Fashion',
+          text: prev.headerBranding?.text || '',
           imageUrl: url,
         }
       }));
@@ -513,14 +513,14 @@ export function AdminContent() {
           {activeTab === 'about' && (
             <div className="bg-background border border-border p-6 rounded-lg space-y-5 animate-in fade-in duration-200">
               <h3 className="text-sm uppercase tracking-[2px] font-bold text-accent mb-2">Homepage About Section CMS</h3>
-              <p className="text-xs text-muted-foreground">Manage the "About Manufacturer" section displayed on the retailer homepage.</p>
+              <p className="text-xs text-muted-foreground">Manage the "About Us" section displayed on the retailer homepage.</p>
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-[1px] mb-1">Eyebrow Title</label>
                 <Input 
                   value={formData.storeInfo?.aboutTitle || ''} 
                   onChange={(e) => handleStoreInfoChange('aboutTitle', e.target.value)} 
-                  placeholder="E.g. About MNFR."
+                  placeholder="E.g. About Our Brand"
                 />
               </div>
 
@@ -690,7 +690,7 @@ export function AdminContent() {
                     </div>
                   )}
                   <p className="text-xs text-muted-foreground">
-                    Shree Nakoda Fashion — Leading manufacturer and wholesaler of premium apparel.
+                    {currentHeaderText || 'Brand Name'} — Leading wholesaler of premium apparel.
                   </p>
                 </div>
               </div>

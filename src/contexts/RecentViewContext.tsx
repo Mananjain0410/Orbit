@@ -12,7 +12,7 @@ const RecentViewContext = createContext<RecentViewContextType | undefined>(undef
 export function RecentViewProvider({ children }: { children: React.ReactNode }) {
   const [recentIds, setRecentIds] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem('mnfr_recent');
+      const saved = localStorage.getItem('b2b_recent') || localStorage.getItem('mnfr_recent');
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -20,7 +20,7 @@ export function RecentViewProvider({ children }: { children: React.ReactNode }) 
   });
 
   useEffect(() => {
-    localStorage.setItem('mnfr_recent', JSON.stringify(recentIds));
+    localStorage.setItem('b2b_recent', JSON.stringify(recentIds));
   }, [recentIds]);
 
   const addRecentView = useCallback((product: Product) => {

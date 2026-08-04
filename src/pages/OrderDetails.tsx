@@ -124,7 +124,7 @@ export function OrderDetails() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 md:px-8 py-10 min-h-[70vh] pt-24 md:pt-32">
-      <SEO title={`Order ${order.orderNumber} - MNFR Wholesale`} />
+      <SEO title={`Order ${order.orderNumber} - Order Details`} />
       
       <Button variant="ghost" onClick={() => navigate(-1)} className="mb-6 rounded-none px-0 hover:bg-transparent">
         <ArrowLeft className="w-4 h-4 mr-2" /> Back to Orders

@@ -30,7 +30,7 @@ export function OrderConfirmation() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-20 min-h-[80vh] flex flex-col justify-center items-center text-center pt-32">
-      <SEO title="Order Confirmation - MNFR Wholesale" />
+      <SEO title="Order Confirmation" />
       <CheckCircle2 className="w-20 h-20 text-green-600 mb-8 stroke-1" />
       <h1 className="text-4xl font-serif mb-4">Order Request Submitted</h1>
       <p className="text-muted-foreground mb-8 max-w-lg">

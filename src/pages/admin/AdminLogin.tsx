@@ -39,12 +39,12 @@ export function AdminLogin() {
 
   return (
     <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4 font-sans">
-      <SEO title="Business Portal Login - MNFR" />
+      <SEO title="Business Portal Login" />
       
       <div className="max-w-md w-full bg-white border border-neutral-200 rounded-xl shadow-sm overflow-hidden">
         <div className="p-8 text-center border-b border-neutral-100 bg-neutral-50/50">
           <div className="w-12 h-12 bg-neutral-900 rounded-lg flex items-center justify-center mx-auto mb-4 shadow-sm">
-            <span className="text-white font-serif font-bold text-xl leading-none">M.</span>
+            <span className="text-white font-serif font-bold text-xl leading-none">B.</span>
           </div>
           <h1 className="text-xl font-semibold text-neutral-900 tracking-tight">Business Portal</h1>
           <p className="text-sm text-neutral-500 mt-1">Sign in to manage your wholesale operations</p>
@@ -67,7 +67,7 @@ export function AdminLogin() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@mnfr.in"
+                placeholder="admin@wholesale.com"
                 className="w-full h-11 rounded-lg border-neutral-200 focus:border-neutral-900 focus:ring-neutral-900 bg-neutral-50/50 focus:bg-white transition-colors"
               />
             </div>
@@ -101,7 +101,7 @@ export function AdminLogin() {
           </form>
           
           <div className="mt-8 text-center text-xs text-neutral-400">
-            <p>Secure Business Portal &copy; {new Date().getFullYear()} MNFR.</p>
+            <p>Secure Business Portal &copy; {new Date().getFullYear()}</p>
             <p className="mt-1">For authorized personnel only.</p>
           </div>
         </div>

@@ -153,7 +153,7 @@ export function CategoryPage() {
   if (!category) {
     return (
       <div className="py-32 text-center flex flex-col items-center min-h-[70vh] justify-center">
-        <SEO title="Category Not Found - MNFR Wholesale" />
+        <SEO title="Category Not Found" />
         <h2 className="font-serif text-3xl mb-4">Category Not Found</h2>
         <p className="text-muted-foreground text-sm max-w-md mx-auto mb-8">
           We couldn't find the requested category. It may have been renamed or removed.
@@ -288,7 +288,7 @@ export function CategoryPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 md:py-16 min-h-[70vh] pt-24 md:pt-32">
       <SEO 
-        title={`${category.name} Wholesale - MNFR`} 
+        title={`${category.name} - Wholesale Collection`} 
         description={`Browse our premium collection of wholesale ${category.name.toLowerCase()} for retailers.`} 
       />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 border-b border-border pb-6 gap-4">

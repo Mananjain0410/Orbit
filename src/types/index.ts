@@ -46,6 +46,7 @@ export interface Product {
   colors: ProductColor[];
   price: number;
   sizes: string[];
+  availableSizes?: string[];
   images: string[];
   description?: string;
   inStock: boolean;
@@ -161,6 +162,16 @@ export interface MasterLength {
   id: string;
   name: string;
   description?: string;
+  isActive: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface MasterSize {
+  id: string;
+  name: string;
+  description?: string;
+  displayOrder?: number;
   isActive: boolean;
   createdAt: number;
   updatedAt: number;

@@ -131,11 +131,13 @@ export function Home() {
 
       {/* About Our Brand (Dynamic from CMS / Firestore) */}
       <section className="py-24 px-4 md:px-8 max-w-4xl mx-auto w-full text-center">
-        <span className="text-[10px] uppercase tracking-[3px] text-muted-foreground block mb-4">
-          {settings.storeInfo.aboutTitle || "About MNFR."}
-        </span>
+        {settings.storeInfo.aboutTitle && (
+          <span className="text-[10px] uppercase tracking-[3px] text-muted-foreground block mb-4">
+            {settings.storeInfo.aboutTitle}
+          </span>
+        )}
         <h2 className="font-serif text-3xl md:text-4xl leading-tight mb-8">
-          {settings.storeInfo.aboutHeading || "Crafting comfort wear with exceptional attention to detail since 2010."}
+          {settings.storeInfo.aboutHeading || "Crafting comfort wear with exceptional attention to detail."}
         </h2>
         <p className="text-muted-foreground leading-relaxed max-w-2xl mx-auto text-sm md:text-base mb-8">
           {settings.storeInfo.aboutParagraph || settings.storeInfo.aboutText}
@@ -143,7 +145,7 @@ export function Home() {
         
         {settings.storeInfo.aboutImage && (
           <div className="mb-8 max-w-2xl mx-auto overflow-hidden rounded-lg border border-border aspect-video">
-            <img src={settings.storeInfo.aboutImage} alt={settings.storeInfo.aboutTitle} className="w-full h-full object-cover" />
+            <img src={settings.storeInfo.aboutImage} alt={settings.storeInfo.aboutTitle || ''} className="w-full h-full object-cover" />
           </div>
         )}
 
@@ -161,9 +163,11 @@ export function Home() {
       <section className="py-24 px-4 md:px-8 bg-muted/50 w-full">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <span className="text-[10px] uppercase tracking-[3px] text-muted-foreground block mb-4">
-              {settings.storeInfo.whyChooseSubtitle || "The MNFR. Advantage"}
-            </span>
+            {settings.storeInfo.whyChooseSubtitle && (
+              <span className="text-[10px] uppercase tracking-[3px] text-muted-foreground block mb-4">
+                {settings.storeInfo.whyChooseSubtitle}
+              </span>
+            )}
             <h2 className="font-serif text-3xl md:text-4xl">
               {settings.storeInfo.whyChooseTitle || "Why Retailers Choose Us"}
             </h2>
@@ -249,7 +253,7 @@ export function Home() {
             {settings.storeInfo.ctaTitle || "Ready to upgrade your inventory?"}
           </h2>
           <p className="text-muted/70 mb-10 max-w-xl mx-auto font-light">
-            {settings.storeInfo.ctaSubtitle || "Join hundreds of premium retailers stocking MNFR. quality wear. Register today to access exclusive wholesale pricing."}
+            {settings.storeInfo.ctaSubtitle || "Join hundreds of premium retailers stocking quality wear. Register today to access exclusive wholesale pricing."}
           </p>
           <Link to={settings.storeInfo.ctaButtonLink || "/login"} className="bg-background text-foreground px-8 py-4 text-[11px] uppercase tracking-[1px] hover:bg-background/90 transition-colors font-medium">
             {settings.storeInfo.ctaButtonText || "Create Retailer Account"}

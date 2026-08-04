@@ -3,13 +3,13 @@ import { SEO } from '../../components/SEO';
 import { useMasterData } from '../../contexts/MasterDataContext';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Plus, Search, Edit2, Trash2, Eye, EyeOff, Check, X, Palette, Layers, Scissors, Maximize2 } from 'lucide-react';
-import { MasterFabric, MasterColor, MasterFit, MasterLength } from '../../types';
+import { Plus, Search, Edit2, Trash2, Eye, EyeOff, Check, X, Palette, Layers, Scissors, Maximize2, Tag } from 'lucide-react';
+import { MasterFabric, MasterColor, MasterFit, MasterLength, MasterSize } from '../../types';
 import { useToast } from '../../components/ui/Toast';
 import { auditLogService } from '../../services/auditLogService';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 
-type TabType = 'fabrics' | 'colors' | 'fits' | 'lengths';
+type TabType = 'fabrics' | 'colors' | 'fits' | 'lengths' | 'sizes';
 
 export function AdminMasterData() {
   const {
@@ -17,6 +17,7 @@ export function AdminMasterData() {
     colors,
     fits,
     lengths,
+    sizes,
     addFabric,
     updateFabric,
     deleteFabric,
@@ -28,7 +29,10 @@ export function AdminMasterData() {
     deleteFit,
     addLength,
     updateLength,
-    deleteLength
+    deleteLength,
+    addSize,
+    updateSize,
+    deleteSize
   } = useMasterData();
 
   const { showToast } = useToast();
@@ -226,6 +230,47 @@ export function AdminMasterData() {
     }
   };
 
+  const handleAddSize = async () => {
+    if (!addForm.name?.trim()) {
+      showToast('Size name is required.', 'error');
+      return;
+    }
+    try {
+      await addSize({
+        name: addForm.name.trim(),
+        description: addForm.description || '',
+        displayOrder: addForm.displayOrder ? Number(addForm.displayOrder) : undefined,
+        isActive: addForm.isActive ?? true
+      });
+      await auditLogService.logAction('master_size_created', `Added Size: ${addForm.name}`);
+      showToast('Size added successfully!', 'success');
+      setIsAdding(false);
+      setAddForm({});
+    } catch (err) {
+      handleActionError(err);
+    }
+  };
+
+  const handleUpdateSize = async (id: string) => {
+    if (!editForm.name?.trim()) {
+      showToast('Size name is required.', 'error');
+      return;
+    }
+    try {
+      await updateSize(id, {
+        name: editForm.name.trim(),
+        description: editForm.description || '',
+        displayOrder: editForm.displayOrder ? Number(editForm.displayOrder) : undefined,
+        isActive: editForm.isActive
+      });
+      await auditLogService.logAction('master_size_updated', `Updated Size: ${editForm.name}`);
+      showToast('Size updated.', 'success');
+      setEditingId(null);
+    } catch (err) {
+      handleActionError(err);
+    }
+  };
+
   const handleDeleteFabric = (item: MasterFabric) => {
     setItemToDelete({ type: 'fabrics', item });
   };
@@ -240,6 +285,10 @@ export function AdminMasterData() {
 
   const handleDeleteLength = (item: MasterLength) => {
     setItemToDelete({ type: 'lengths', item });
+  };
+
+  const handleDeleteSize = (item: MasterSize) => {
+    setItemToDelete({ type: 'sizes', item });
   };
 
   const confirmDeleteMasterItem = async () => {
@@ -263,6 +312,10 @@ export function AdminMasterData() {
         await deleteLength(item.id);
         await auditLogService.logAction('master_length_deleted', `Deleted Length: ${item.name}`);
         showToast('Length deleted successfully.', 'success');
+      } else if (type === 'sizes') {
+        await deleteSize(item.id);
+        await auditLogService.logAction('master_size_deleted', `Deleted Size: ${item.name}`);
+        showToast('Size deleted successfully.', 'success');
       }
       setItemToDelete(null);
     } catch (err: any) {
@@ -277,6 +330,7 @@ export function AdminMasterData() {
   const filteredColors = colors.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
   const filteredFits = fits.filter(f => f.name.toLowerCase().includes(searchTerm.toLowerCase()));
   const filteredLengths = lengths.filter(l => l.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredSizes = sizes.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto p-4 md:p-6">
@@ -335,6 +389,14 @@ export function AdminMasterData() {
         >
           <Maximize2 className="w-4 h-4" /> Lengths ({lengths.length})
         </button>
+        <button
+          onClick={() => handleTabChange('sizes')}
+          className={`flex items-center gap-2 px-5 py-2.5 text-xs font-bold uppercase tracking-[1px] border-b-2 transition-all ${
+            activeTab === 'sizes' ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Tag className="w-4 h-4" /> Sizes ({sizes.length})
+        </button>
       </div>
 
       {/* Search Toolbar */}
@@ -369,7 +431,8 @@ export function AdminMasterData() {
                 placeholder={`e.g. ${
                   activeTab === 'fabrics' ? 'Slub Linen' :
                   activeTab === 'colors' ? 'Olive Green' :
-                  activeTab === 'fits' ? 'Loose Fit' : 'Ankle Length'
+                  activeTab === 'fits' ? 'Loose Fit' :
+                  activeTab === 'lengths' ? 'Ankle Length' : '2XL'
                 }`}
               />
             </div>
@@ -444,6 +507,7 @@ export function AdminMasterData() {
                 else if (activeTab === 'colors') handleAddColor();
                 else if (activeTab === 'fits') handleAddFit();
                 else if (activeTab === 'lengths') handleAddLength();
+                else if (activeTab === 'sizes') handleAddSize();
               }} 
               className="uppercase tracking-[1px] font-bold"
             >
@@ -664,6 +728,58 @@ export function AdminMasterData() {
                             <div className="flex items-center justify-end gap-1">
                               <button onClick={() => { setEditingId(item.id); setEditForm({ ...item }); }} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground"><Edit2 className="w-4 h-4" /></button>
                               <button onClick={() => handleDeleteLength(item)} className="p-1.5 hover:bg-red-50 text-red-600 rounded"><Trash2 className="w-4 h-4" /></button>
+                            </div>
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  ))
+                )
+              )}
+
+              {/* SIZES LIST */}
+              {activeTab === 'sizes' && (
+                filteredSizes.length === 0 ? (
+                  <tr><td colSpan={4} className="px-4 py-10 text-center text-muted-foreground">No sizes found.</td></tr>
+                ) : (
+                  filteredSizes.map((item) => (
+                    <tr key={item.id} className="hover:bg-muted/20">
+                      {editingId === item.id ? (
+                        <td colSpan={4} className="p-4 bg-muted/10">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <Input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} placeholder="Size Name (e.g. M, 2XL)" />
+                            <Input value={editForm.description || ''} onChange={e => setEditForm({ ...editForm, description: e.target.value })} placeholder="Description" />
+                            <select 
+                              value={editForm.isActive ? 'active' : 'disabled'} 
+                              onChange={e => setEditForm({ ...editForm, isActive: e.target.value === 'active' })}
+                              className="h-10 px-3 rounded-lg border border-input text-xs bg-background"
+                            >
+                              <option value="active">Active</option>
+                              <option value="disabled">Disabled</option>
+                            </select>
+                          </div>
+                          <div className="flex gap-2 justify-end mt-3">
+                            <Button size="sm" variant="outline" onClick={() => setEditingId(null)}>Cancel</Button>
+                            <Button size="sm" onClick={() => handleUpdateSize(item.id)} className="uppercase tracking-[1px] font-bold">Save</Button>
+                          </div>
+                        </td>
+                      ) : (
+                        <>
+                          <td className="px-4 py-3 font-bold text-foreground">
+                            <span className="px-2.5 py-1 bg-muted border border-border rounded text-xs font-mono font-bold">
+                              {item.name}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground font-normal">{item.description || '—'}</td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${item.isActive ? 'bg-green-100 text-green-800' : 'bg-neutral-100 text-neutral-600'}`}>
+                              {item.isActive ? 'Active' : 'Disabled'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <button onClick={() => { setEditingId(item.id); setEditForm({ ...item }); }} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground"><Edit2 className="w-4 h-4" /></button>
+                              <button onClick={() => handleDeleteSize(item)} className="p-1.5 hover:bg-red-50 text-red-600 rounded"><Trash2 className="w-4 h-4" /></button>
                             </div>
                           </td>
                         </>

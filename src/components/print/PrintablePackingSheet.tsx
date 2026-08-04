@@ -12,7 +12,7 @@ export const PrintablePackingSheet = forwardRef<HTMLDivElement, PrintablePacking
       <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-6">
         <div>
           <h1 className="text-3xl font-bold font-serif mb-1">PACKING SHEET</h1>
-          <p className="text-sm font-medium">MNFR Warehouse Operations</p>
+          <p className="text-sm font-medium">Warehouse Operations</p>
         </div>
         <div className="text-right">
           <p className="text-xl font-bold">{order.orderNumber}</p>

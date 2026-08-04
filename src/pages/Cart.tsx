@@ -48,7 +48,7 @@ export function Cart() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 min-h-[70vh] pt-24 md:pt-32">
-      <SEO title="Your Wholesale Cart - MNFR" />
+      <SEO title="Your Wholesale Cart" />
       <div className="flex items-end justify-between mb-10 border-b border-border pb-6">
         <div>
           <span className="text-[10px] uppercase tracking-[3px] text-muted-foreground block mb-2">Wholesale</span>
@@ -93,43 +93,49 @@ export function Cart() {
                     </div>
                     
                     <div className="space-y-3 flex-1">
-                      {item.selections.map(sel => (
-                        <div key={sel.name} className="flex items-center justify-between p-3 border border-border">
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-3">
-                              <div className="w-4 h-4 rounded-full border border-border shadow-sm" style={{ backgroundColor: sel.hex }} />
-                              <span className="text-sm font-medium">{sel.name}</span>
+                      {item.selections.map(sel => {
+                        const itemSizes = (item.product.availableSizes && item.product.availableSizes.length > 0) 
+                          ? item.product.availableSizes 
+                          : (item.product.sizes && item.product.sizes.length > 0 ? item.product.sizes : ['S', 'M', 'L', 'XL']);
+
+                        return (
+                          <div key={sel.name} className="flex items-center justify-between p-3 border border-border">
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-3">
+                                <div className="w-4 h-4 rounded-full border border-border shadow-sm" style={{ backgroundColor: sel.hex }} />
+                                <span className="text-sm font-medium">{sel.name}</span>
+                              </div>
+                              <span className="text-[10px] text-muted-foreground uppercase tracking-[1px]">Includes: {itemSizes.join(', ')}</span>
                             </div>
-                            <span className="text-[10px] text-muted-foreground uppercase tracking-[1px]">Includes: {item.product.sizes.join(', ')}</span>
+                            
+                            <div className="flex items-center gap-4">
+                              <input 
+                                type="text" 
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                value={sel.quantity || ''}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (val === '') updateQuantity(item.product.id, sel.name, 0);
+                                  else {
+                                    const num = parseInt(val, 10);
+                                    if (!isNaN(num) && num >= 0) updateQuantity(item.product.id, sel.name, num);
+                                  }
+                                }}
+                                onBlur={() => {
+                                  if (sel.quantity === 0) {
+                                    removeColor(item.product.id, sel.name);
+                                  }
+                                }}
+                                className="w-16 h-8 border border-border text-center focus:outline-none focus:border-foreground text-sm font-medium bg-background"
+                              />
+                              <button onClick={() => removeColor(item.product.id, sel.name)} className="text-muted-foreground hover:text-red-500 transition-colors">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           </div>
-                          
-                          <div className="flex items-center gap-4">
-                            <input 
-                              type="text" 
-                              inputMode="numeric"
-                              pattern="[0-9]*"
-                              value={sel.quantity || ''}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                if (val === '') updateQuantity(item.product.id, sel.name, 0);
-                                else {
-                                  const num = parseInt(val, 10);
-                                  if (!isNaN(num) && num >= 0) updateQuantity(item.product.id, sel.name, num);
-                                }
-                              }}
-                              onBlur={() => {
-                                if (sel.quantity === 0) {
-                                  removeColor(item.product.id, sel.name);
-                                }
-                              }}
-                              className="w-16 h-8 border border-border text-center focus:outline-none focus:border-foreground text-sm font-medium bg-background"
-                            />
-                            <button onClick={() => removeColor(item.product.id, sel.name)} className="text-muted-foreground hover:text-red-500 transition-colors">
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                     
                     <div className="mt-4 pt-4 border-t border-border flex justify-between items-end text-sm">
@@ -167,7 +173,7 @@ export function Cart() {
                   <span className="font-serif text-3xl">₹{totalPrice.toLocaleString()}</span>
                 </div>
                 <p className="text-[10px] text-muted-foreground leading-relaxed">
-                  This is an enquiry/order request. Final billing, GST, and shipping will be confirmed by the manufacturer.
+                  This is an enquiry/order request. Final billing, GST, and shipping will be confirmed upon order review.
                 </p>
               </div>
               

@@ -112,7 +112,7 @@ export function Profile() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 min-h-[70vh] pt-24 md:pt-32">
-      <SEO title="Retailer Profile - MNFR Wholesale" />
+      <SEO title="Retailer Profile" />
       
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start w-full">
         {/* Sidebar */}

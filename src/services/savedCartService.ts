@@ -42,7 +42,9 @@ export const savedCartService = {
       fabric: item.product.fabric || '',
       price: item.product.price || 0,
       image: item.product.images?.[0] || '',
-      sizes: item.product.sizes || [],
+      sizes: (item.product.availableSizes && item.product.availableSizes.length > 0) 
+        ? item.product.availableSizes 
+        : (item.product.sizes && item.product.sizes.length > 0 ? item.product.sizes : ['S', 'M', 'L', 'XL']),
       selections: item.selections.map(s => ({
         name: s.name,
         hex: s.hex,

@@ -28,10 +28,10 @@ export function Header() {
 
   const headerBranding = settings.headerBranding || {
     type: 'text',
-    text: 'Shree Nakoda Fashion',
+    text: '',
     imageUrl: '',
   };
-  const headerText = headerBranding.text || 'Shree Nakoda Fashion';
+  const headerText = headerBranding.text || settings.storeInfo?.name || businessProfile?.brandName || businessProfile?.businessName || '';
 
   const isHome = location.pathname === '/';
 
@@ -220,7 +220,7 @@ export function Header() {
             >
               <div className="flex items-center justify-between mb-8 border-b border-border pb-4">
                 <span className="font-serif font-bold text-2xl tracking-tighter uppercase">
-                  MNFR.
+                  {headerText}
                 </span>
                 <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(false)}>
                   <X className="h-5 w-5" />

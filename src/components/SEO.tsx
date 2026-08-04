@@ -8,8 +8,8 @@ interface SEOProps {
 }
 
 export function SEO({ 
-  title = 'MNFR Wholesale | Premium B2B Apparel', 
-  description = 'MNFR Wholesale provides premium quality apparel for modern retailers. Explore our latest wholesale collections.',
+  title = 'Wholesale Portal | Premium B2B Apparel', 
+  description = 'Wholesale Portal provides premium quality apparel for modern retailers. Explore our latest wholesale collections.',
   type = 'website'
 }: SEOProps) {
   return (

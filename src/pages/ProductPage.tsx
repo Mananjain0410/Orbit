@@ -40,7 +40,7 @@ export function ProductPage() {
   if (!product) {
     return (
       <div className="py-32 text-center flex flex-col items-center min-h-[70vh] justify-center">
-        <SEO title="Product Not Found - MNFR Wholesale" />
+        <SEO title="Product Not Found" />
         <h2 className="font-serif text-3xl mb-4">Product Not Found</h2>
         <Button variant="outline" className="rounded-none border-foreground text-foreground px-8 text-[11px] uppercase tracking-[1px]" onClick={() => window.history.back()}>
           Return
@@ -59,7 +59,7 @@ export function ProductPage() {
   const handleShare = async () => {
     try {
       await navigator.share({
-        title: `MNFR Wholesale - ${product.patternNumber}`,
+        title: `Wholesale - ${product.patternNumber}`,
         url: window.location.href,
       });
     } catch (e) {
@@ -104,7 +104,7 @@ export function ProductPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 md:py-16 min-h-[70vh] pt-24 md:pt-32">
       <SEO 
-        title={`${product.patternNumber} - MNFR Wholesale`} 
+        title={`${product.patternNumber} - Wholesale Catalog`} 
         description={product.description}
         type="product"
       />
@@ -181,19 +181,27 @@ export function ProductPage() {
             <span className="text-[11px] text-muted-foreground uppercase tracking-[1px] pb-1">/ piece</span>
           </div>
 
-          <div className="bg-muted/50 p-6 mb-8 border border-border">
-            <h3 className="text-[10px] uppercase tracking-[2px] font-bold text-accent mb-4">Size Configuration</h3>
-            <div className="flex gap-2 flex-wrap mb-4">
-              {product.sizes.map(size => (
-                <div key={size} className="w-10 h-10 border border-foreground flex items-center justify-center text-sm font-medium">
-                  {size}
+          {/* Size Configuration */}
+          {(() => {
+            const productSizes = (product.availableSizes && product.availableSizes.length > 0) 
+              ? product.availableSizes 
+              : (product.sizes && product.sizes.length > 0 ? product.sizes : ['S', 'M', 'L', 'XL']);
+            return (
+              <div className="bg-muted/50 p-6 mb-8 border border-border">
+                <h3 className="text-[10px] uppercase tracking-[2px] font-bold text-accent mb-4">Size Configuration</h3>
+                <div className="flex gap-2 flex-wrap mb-4">
+                  {productSizes.map(size => (
+                    <div key={size} className="px-3 h-10 min-w-10 border border-foreground flex items-center justify-center text-sm font-medium">
+                      {size}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              <strong>Important:</strong> We only sell in complete sets. Every quantity you enter below represents one complete set containing <strong>all {product.sizes.length} sizes</strong> shown above.
-            </p>
-          </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  <strong>Important:</strong> We only sell in complete sets. Every quantity you enter below represents one complete set containing <strong>all {productSizes.length} sizes ({productSizes.join(', ')})</strong>.
+                </p>
+              </div>
+            );
+          })()}
 
           <div className="mb-8 border-b border-border pb-8">
             <h3 className="text-[10px] uppercase tracking-[2px] font-bold text-accent mb-6">Select Quantities (Sets)</h3>

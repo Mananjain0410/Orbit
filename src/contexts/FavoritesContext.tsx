@@ -14,7 +14,7 @@ const FavoritesContext = createContext<FavoritesContextType | undefined>(undefin
 export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   const [favoriteIds, setFavoriteIds] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem('mnfr_favorites');
+      const saved = localStorage.getItem('b2b_favorites') || localStorage.getItem('mnfr_favorites');
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -22,7 +22,7 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   });
 
   useEffect(() => {
-    localStorage.setItem('mnfr_favorites', JSON.stringify(favoriteIds));
+    localStorage.setItem('b2b_favorites', JSON.stringify(favoriteIds));
   }, [favoriteIds]);
 
   const addFavorite = useCallback((product: Product) => {

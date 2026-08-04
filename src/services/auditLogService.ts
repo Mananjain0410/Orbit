@@ -29,6 +29,9 @@ export type AuditAction =
   | 'master_length_created'
   | 'master_length_updated'
   | 'master_length_deleted'
+  | 'master_size_created'
+  | 'master_size_updated'
+  | 'master_size_deleted'
   | 'business_profile_updated';
 
 export interface AuditLog {
@@ -51,7 +54,7 @@ export const auditLogService = {
     newValue?: any
   ): Promise<void> {
     try {
-      const adminEmail = auth.currentUser?.email || 'admin@mnfr.in';
+      const adminEmail = auth.currentUser?.email || 'admin@portal.com';
       const logEntry: AuditLog = {
         timestamp: Date.now(),
         adminEmail,

@@ -33,15 +33,19 @@ export function Footer() {
               </div>
             )}
             {logoSrc ? (
-              <img src={logoSrc} alt={businessProfile.brandName} className="h-10 max-w-[200px] object-contain" />
+              <img src={logoSrc} alt={businessProfile.brandName || settings.storeInfo?.name || ''} className="h-10 max-w-[200px] object-contain" />
             ) : (
-              <span className="font-serif font-bold text-3xl tracking-tighter uppercase">
-                {businessProfile.brandName}
-              </span>
+              (businessProfile.brandName || settings.storeInfo?.name) && (
+                <span className="font-serif font-bold text-3xl tracking-tighter uppercase">
+                  {businessProfile.brandName || settings.storeInfo?.name}
+                </span>
+              )
             )}
-            <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
-              {businessProfile.businessName} — Leading manufacturer and wholesaler of premium apparel.
-            </p>
+            {(settings.storeInfo?.footerText || settings.storeInfo?.aboutText || businessProfile.businessName) && (
+              <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
+                {settings.storeInfo?.footerText || settings.storeInfo?.aboutText || businessProfile.businessName}
+              </p>
+            )}
             <div className="flex gap-4 text-foreground/70">
               {businessProfile.instagram && (
                 <a href={businessProfile.instagram} className="hover:text-foreground transition-colors" aria-label="Instagram" target="_blank" rel="noopener noreferrer">
@@ -113,10 +117,12 @@ export function Footer() {
         </div>
 
         <div className="border-t border-border pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-[11px] text-muted-foreground uppercase tracking-[1px]">
-          <p>{businessProfile.copyrightText || `© 2026 ${businessProfile.businessName}. All rights reserved.`}</p>
-          <div className="flex gap-6">
-            <span>{businessProfile.businessName}</span>
-          </div>
+          <p>{businessProfile.copyrightText || (businessProfile.businessName ? `© ${new Date().getFullYear()} ${businessProfile.businessName}. All rights reserved.` : '')}</p>
+          {businessProfile.businessName && (
+            <div className="flex gap-6">
+              <span>{businessProfile.businessName}</span>
+            </div>
+          )}
         </div>
       </div>
     </footer>

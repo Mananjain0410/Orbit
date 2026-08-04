@@ -1,18 +1,24 @@
 import React, { forwardRef } from 'react';
 import { Order } from '../../types';
+import { useMasterData } from '../../contexts/MasterDataContext';
+import { useSettings } from '../../contexts/SettingsContext';
 
 interface PrintableOrderProps {
   order: Order;
 }
 
 export const PrintableOrder = forwardRef<HTMLDivElement, PrintableOrderProps>(({ order }, ref) => {
+  const { businessProfile } = useMasterData();
+  const { settings } = useSettings();
+  const title = businessProfile?.brandName || businessProfile?.businessName || settings?.storeInfo?.name || 'Wholesale Order';
+
   return (
     <div ref={ref} className="p-8 max-w-4xl mx-auto bg-white text-black min-h-screen" style={{ width: '210mm', minHeight: '297mm' }}>
       {/* Header */}
       <div className="flex justify-between items-start border-b-2 border-black pb-6 mb-6">
         <div>
-          <h1 className="text-4xl font-bold font-serif mb-2">MNFR</h1>
-          <p className="text-sm text-gray-600">Premium Wholesale Clothing</p>
+          <h1 className="text-3xl font-bold font-serif mb-2">{title}</h1>
+          <p className="text-sm text-gray-600">Wholesale Order Request</p>
         </div>
         <div className="text-right">
           <h2 className="text-2xl font-bold uppercase tracking-widest text-gray-800">Order Request</h2>

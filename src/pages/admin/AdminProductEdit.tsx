@@ -25,10 +25,12 @@ export function AdminProductEdit() {
     colors: masterColors, 
     fits, 
     lengths, 
+    sizes: masterSizes,
     addFabric, 
     addColor, 
     addFit, 
-    addLength 
+    addLength,
+    addSize
   } = useMasterData();
   const { showToast, error: showError } = useToast();
 
@@ -46,7 +48,8 @@ export function AdminProductEdit() {
     fit: '',
     length: '',
     price: 0,
-    sizes: ['S', 'M', 'L', 'XL'],
+    availableSizes: [],
+    sizes: [],
     colors: [],
     images: [],
     description: '',
@@ -57,7 +60,16 @@ export function AdminProductEdit() {
 
   useEffect(() => {
     if (existingProduct) {
-      setFormData(existingProduct);
+      const effSizes = (existingProduct.availableSizes && existingProduct.availableSizes.length > 0)
+        ? existingProduct.availableSizes
+        : (existingProduct.sizes && existingProduct.sizes.length > 0)
+          ? existingProduct.sizes
+          : [];
+      setFormData({
+        ...existingProduct,
+        availableSizes: effSizes,
+        sizes: effSizes
+      });
     }
   }, [existingProduct]);
 
@@ -87,7 +99,21 @@ export function AdminProductEdit() {
   const [newLengthName, setNewLengthName] = useState('');
   const [newLengthDesc, setNewLengthDesc] = useState('');
 
-  // Color Selection State
+  // Size Modal State
+  const [isCreatingSizeModal, setIsCreatingSizeModal] = useState(false);
+  const [newSizeName, setNewSizeName] = useState('');
+  const [newSizeDesc, setNewSizeDesc] = useState('');
+
+  const toggleSizeSelection = (sizeName: string) => {
+    const current = formData.availableSizes || formData.sizes || [];
+    const exists = current.includes(sizeName);
+    const updated = exists ? current.filter(s => s !== sizeName) : [...current, sizeName];
+    setFormData(prev => ({
+      ...prev,
+      availableSizes: updated,
+      sizes: updated
+    }));
+  };
   const [colorSearch, setColorSearch] = useState('');
   const [showColorDropdown, setShowColorDropdown] = useState(false);
   const [selectedMasterColor, setSelectedMasterColor] = useState<{ name: string; hexCode: string; rgb?: string } | null>(null);
@@ -156,6 +182,23 @@ export function AdminProductEdit() {
       showToast(`Length "${created.name}" created and selected!`, 'success');
     } catch (err: any) {
       showToast(err.message || 'Failed to create length.', 'error');
+    }
+  };
+
+  const handleCreateSize = async () => {
+    if (!newSizeName.trim()) {
+      showToast('Size name is required.', 'error');
+      return;
+    }
+    try {
+      const created = await addSize({ name: newSizeName.trim(), description: newSizeDesc.trim(), isActive: true });
+      toggleSizeSelection(created.name);
+      setIsCreatingSizeModal(false);
+      setNewSizeName('');
+      setNewSizeDesc('');
+      showToast(`Size "${created.name}" created and selected!`, 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to create size.', 'error');
     }
   };
 
@@ -302,6 +345,15 @@ export function AdminProductEdit() {
       return;
     }
 
+    const effSizes = formData.availableSizes && formData.availableSizes.length > 0 
+      ? formData.availableSizes 
+      : (formData.sizes && formData.sizes.length > 0 ? formData.sizes : []);
+      
+    if (!effSizes || effSizes.length === 0) {
+      showError('At least one available size is required for this product');
+      return;
+    }
+
     if (!formData.colors || formData.colors.length === 0) {
       showError('At least one color is required');
       return;
@@ -323,6 +375,8 @@ export function AdminProductEdit() {
 
     const finalData = { 
       ...formData, 
+      availableSizes: effSizes,
+      sizes: effSizes,
       categoryName: categoryObj?.name || '',
       openingInventory,
       ...(statusOverride ? { status: statusOverride } : {})
@@ -452,7 +506,7 @@ export function AdminProductEdit() {
               <Input 
                 value={formData.patternNumber || ''} 
                 onChange={e => handleChange('patternNumber', e.target.value)} 
-                placeholder="e.g. MNFR-8802"
+                placeholder="e.g. PATTERN-8802"
               />
             </div>
 
@@ -655,6 +709,58 @@ export function AdminProductEdit() {
                 className="w-full min-h-[90px] p-3 rounded-lg border border-input text-xs bg-background focus:ring-2 focus:ring-foreground focus:outline-none"
                 placeholder="Product design and specifications..."
               />
+            </div>
+
+            {/* Available Sizes Section */}
+            <div className="md:col-span-2 pt-4 border-t border-border space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <label className="text-xs font-bold uppercase text-muted-foreground block">Available Sizes *</label>
+                  <p className="text-[11px] text-muted-foreground">
+                    Select only the sizes that are actually produced and available for this product pattern.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewSizeName('');
+                    setNewSizeDesc('');
+                    setIsCreatingSizeModal(true);
+                  }}
+                  className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 self-start sm:self-auto"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Create New Size
+                </button>
+              </div>
+
+              <div className="flex flex-wrap gap-2 pt-1">
+                {masterSizes.filter(s => s.isActive).length > 0 ? (
+                  masterSizes.filter(s => s.isActive).map(sizeItem => {
+                    const currentSelected = formData.availableSizes || formData.sizes || [];
+                    const isSelected = currentSelected.includes(sizeItem.name);
+                    return (
+                      <button
+                        key={sizeItem.id}
+                        type="button"
+                        onClick={() => toggleSizeSelection(sizeItem.name)}
+                        className={`px-3.5 py-2 rounded-lg text-xs font-bold border transition-all flex items-center gap-1.5 ${
+                          isSelected
+                            ? 'bg-foreground text-background border-foreground shadow-sm'
+                            : 'bg-background text-foreground border-border hover:bg-muted'
+                        }`}
+                      >
+                        {isSelected && <Check className="w-3.5 h-3.5" />}
+                        {sizeItem.name}
+                      </button>
+                    );
+                  })
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">No sizes available in Master Data yet.</p>
+                )}
+              </div>
+              {(!formData.availableSizes || formData.availableSizes.length === 0) && (!formData.sizes || formData.sizes.length === 0) && (
+                <p className="text-[11px] text-red-500 font-medium">* Select at least one size for this product.</p>
+              )}
             </div>
           </div>
         </div>
@@ -965,6 +1071,27 @@ export function AdminProductEdit() {
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" size="sm" onClick={() => setIsCreatingLengthModal(false)}>Cancel</Button>
               <Button size="sm" onClick={handleCreateLength} className="uppercase font-bold">Create Length</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Size Modal */}
+      {isCreatingSizeModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-xl p-6 max-w-md w-full space-y-4 shadow-xl">
+            <h3 className="font-bold text-base border-b border-border pb-2">+ Create New Size</h3>
+            <div>
+              <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">Size Name *</label>
+              <Input value={newSizeName} onChange={e => setNewSizeName(e.target.value)} placeholder="e.g. 2XL, Free Size" />
+            </div>
+            <div>
+              <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">Description (Optional)</label>
+              <Input value={newSizeDesc} onChange={e => setNewSizeDesc(e.target.value)} placeholder="e.g. Double Extra Large" />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" size="sm" onClick={() => setIsCreatingSizeModal(false)}>Cancel</Button>
+              <Button size="sm" onClick={handleCreateSize} className="uppercase font-bold">Create Size</Button>
             </div>
           </div>
         </div>

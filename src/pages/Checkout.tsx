@@ -50,18 +50,22 @@ export function Checkout() {
   const executeOrderCreation = async () => {
     setIsSubmitting(true);
     try {
-      const orderItems = items.flatMap(item => 
-        item.selections.map(sel => ({
+      const orderItems = items.flatMap(item => {
+        const itemSizes = (item.product.availableSizes && item.product.availableSizes.length > 0) 
+          ? item.product.availableSizes 
+          : (item.product.sizes && item.product.sizes.length > 0 ? item.product.sizes : ['S', 'M', 'L', 'XL']);
+
+        return item.selections.map(sel => ({
           productId: item.product.id,
           patternNumber: item.product.patternNumber,
           color: sel.name,
           hex: sel.hex,
           sets: sel.quantity,
-          sizes: item.product.sizes,
+          sizes: itemSizes,
           price: item.product.price,
           image: item.product.images[0] || ''
-        }))
-      );
+        }));
+      });
 
       const orderData = {
         retailerId: retailer.uid,
@@ -121,7 +125,7 @@ export function Checkout() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 pt-24 md:pt-32">
-      <SEO title="Review Order - MNFR Wholesale" />
+      <SEO title="Review Order" />
       <Button variant="ghost" onClick={() => navigate(-1)} className="mb-6 rounded-none px-0 hover:bg-transparent">
         <ArrowLeft className="w-4 h-4 mr-2" /> Back to Cart
       </Button>
@@ -204,7 +208,7 @@ export function Checkout() {
                 <span className="font-serif text-3xl">₹{totalPrice.toLocaleString()}</span>
               </div>
               <p className="text-[10px] text-muted-foreground leading-relaxed mt-4">
-                By submitting, you are requesting these items at wholesale. The manufacturer will review and confirm availability, final billing, and shipping details.
+                By submitting, you are requesting these items at wholesale. Our team will review and confirm availability, final billing, and shipping details.
               </p>
             </div>
 
@@ -250,7 +254,7 @@ export function Checkout() {
             </div>
 
             <p className="text-xs text-muted-foreground mb-6 leading-relaxed">
-              Your order request will still be submitted for approval. The manufacturer will decide whether to fulfill from upcoming production or accept partial fulfillment.
+              Your order request will still be submitted for approval. Our team will decide whether to fulfill from upcoming production or accept partial fulfillment.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3">

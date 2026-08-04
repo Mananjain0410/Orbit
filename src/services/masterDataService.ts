@@ -1,25 +1,25 @@
 import { collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { MasterFabric, MasterColor, MasterFit, MasterLength, BusinessProfile } from '../types';
+import { MasterFabric, MasterColor, MasterFit, MasterLength, MasterSize, BusinessProfile } from '../types';
 
 export const defaultBusinessProfile: BusinessProfile = {
-  businessName: 'MNFR Clothing Pvt Ltd',
-  brandName: 'MNFR Wholesale',
-  gstNumber: '24AAACM1234F1Z2',
-  udyamNumber: 'UDYAM-GJ-01-0012345',
-  address: '123 Textile Hub, Ring Road',
-  city: 'Surat',
-  state: 'Gujarat',
+  businessName: '',
+  brandName: '',
+  gstNumber: '',
+  udyamNumber: '',
+  address: '',
+  city: '',
+  state: '',
   country: 'India',
-  pinCode: '395002',
-  phone: '+91 98765 43210',
-  whatsapp: '+91 98765 43210',
-  email: 'wholesale@mnfr.in',
-  supportEmail: 'support@mnfr.in',
-  website: 'https://mnfr.in',
-  instagram: 'https://instagram.com/mnfr_wholesale',
-  facebook: 'https://facebook.com/mnfr_wholesale',
-  copyrightText: '© 2026 MNFR Clothing. All rights reserved.',
+  pinCode: '',
+  phone: '',
+  whatsapp: '',
+  email: '',
+  supportEmail: '',
+  website: '',
+  instagram: '',
+  facebook: '',
+  copyrightText: '',
   logoUrl: '',
   footerLogoUrl: '',
   updatedAt: Date.now()
@@ -59,6 +59,18 @@ const DEFAULT_LENGTHS: Omit<MasterLength, 'id'>[] = [
   { name: 'Capri', description: '3/4 length below the knee', isActive: true, createdAt: Date.now(), updatedAt: Date.now() },
   { name: 'Knee Length', description: 'Casual Bermuda cut at knee', isActive: true, createdAt: Date.now(), updatedAt: Date.now() },
   { name: 'Mid Thigh', description: 'Short athletic cut', isActive: true, createdAt: Date.now(), updatedAt: Date.now() },
+];
+
+const DEFAULT_SIZES: Omit<MasterSize, 'id'>[] = [
+  { name: 'S', description: 'Small', displayOrder: 1, isActive: true, createdAt: Date.now(), updatedAt: Date.now() },
+  { name: 'M', description: 'Medium', displayOrder: 2, isActive: true, createdAt: Date.now(), updatedAt: Date.now() },
+  { name: 'L', description: 'Large', displayOrder: 3, isActive: true, createdAt: Date.now(), updatedAt: Date.now() },
+  { name: 'XL', description: 'Extra Large', displayOrder: 4, isActive: true, createdAt: Date.now(), updatedAt: Date.now() },
+  { name: '2XL', description: 'Double Extra Large', displayOrder: 5, isActive: true, createdAt: Date.now(), updatedAt: Date.now() },
+  { name: '3XL', description: 'Triple Extra Large', displayOrder: 6, isActive: true, createdAt: Date.now(), updatedAt: Date.now() },
+  { name: '4XL', description: 'Quadruple Extra Large', displayOrder: 7, isActive: true, createdAt: Date.now(), updatedAt: Date.now() },
+  { name: '5XL', description: 'Quintuple Extra Large', displayOrder: 8, isActive: true, createdAt: Date.now(), updatedAt: Date.now() },
+  { name: 'Free Size', description: 'One Size Fits All', displayOrder: 9, isActive: true, createdAt: Date.now(), updatedAt: Date.now() },
 ];
 
 export const masterDataService = {
@@ -415,6 +427,90 @@ export const masterDataService = {
         });
         if (inUse) {
           throw new Error('Cannot delete this length because it is used by existing products.');
+        }
+      }
+    }
+    await deleteDoc(docRef);
+  },
+
+  // --- SIZES ---
+  async getSizes(): Promise<MasterSize[]> {
+    const colRef = collection(db, 'master_sizes');
+    const snap = await getDocs(colRef);
+    if (snap.empty) {
+      const seeded: MasterSize[] = [];
+      for (const item of DEFAULT_SIZES) {
+        const docRes = await addDoc(colRef, item);
+        seeded.push({ id: docRes.id, ...item });
+      }
+      return seeded;
+    }
+    const items = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) } as MasterSize));
+    return items.sort((a, b) => (a.displayOrder || 99) - (b.displayOrder || 99));
+  },
+
+  subscribeSizes(callback: (sizes: MasterSize[]) => void) {
+    const colRef = collection(db, 'master_sizes');
+    return onSnapshot(colRef, async (snap) => {
+      if (snap.empty) {
+        const seeded = await this.getSizes();
+        callback(seeded);
+      } else {
+        const items = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) } as MasterSize));
+        items.sort((a, b) => (a.displayOrder || 99) - (b.displayOrder || 99));
+        callback(items);
+      }
+    });
+  },
+
+  async addSize(size: { name: string; description?: string; displayOrder?: number; isActive?: boolean }): Promise<MasterSize> {
+    const existing = await this.getSizes();
+    const normalizedNew = size.name.trim().toLowerCase();
+    if (existing.some(s => s.name.trim().toLowerCase() === normalizedNew)) {
+      throw new Error(`Size with name "${size.name.trim()}" already exists.`);
+    }
+
+    const colRef = collection(db, 'master_sizes');
+    const newItem = {
+      name: size.name.trim(),
+      description: size.description?.trim() || '',
+      displayOrder: size.displayOrder ? Number(size.displayOrder) : existing.length + 1,
+      isActive: size.isActive ?? true,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    const docRef = await addDoc(colRef, newItem);
+    return { id: docRef.id, ...newItem };
+  },
+
+  async updateSize(id: string, updates: Partial<MasterSize>): Promise<void> {
+    if (updates.name) {
+      const existing = await this.getSizes();
+      const normalizedNew = updates.name.trim().toLowerCase();
+      if (existing.some(s => s.id !== id && s.name.trim().toLowerCase() === normalizedNew)) {
+        throw new Error(`Size with name "${updates.name.trim()}" already exists.`);
+      }
+    }
+    const docRef = doc(db, 'master_sizes', id);
+    const cleanUpdates = JSON.parse(JSON.stringify({ ...updates, updatedAt: Date.now() }));
+    await updateDoc(docRef, cleanUpdates);
+  },
+
+  async deleteSize(id: string): Promise<void> {
+    const docRef = doc(db, 'master_sizes', id);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      const sizeName = (snap.data().name || '').trim().toLowerCase();
+      if (sizeName) {
+        const productsRef = collection(db, 'products');
+        const productsSnap = await getDocs(productsRef);
+        const inUse = productsSnap.docs.some(d => {
+          const p = d.data();
+          const pSizes = Array.isArray(p.availableSizes) ? p.availableSizes : (Array.isArray(p.sizes) ? p.sizes : []);
+          return pSizes.some((s: string) => String(s).trim().toLowerCase() === sizeName);
+        });
+        if (inUse) {
+          throw new Error('Cannot delete this size because it is currently assigned to products.');
         }
       }
     }
