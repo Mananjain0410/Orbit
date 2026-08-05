@@ -1,0 +1,29 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function to check if the authenticated user is an administrator
+    function isAdmin() {
+      return request.auth != null && (
+        (request.auth.token.email != null && (
+          request.auth.token.email.matches('.*@mnfr\\.in$') || 
+          request.auth.token.email.matches('.*admin.*') ||
+          request.auth.token.email == 'mananjain0410@gmail.com' ||
+          request.auth.token.email == 'admin@wholesale.com' ||
+          request.auth.token.email == 'admin@portal.com'
+        )) ||
+        firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid)) ||
+        (firestore.exists(/databases/(default)/documents/retailers/$(request.auth.uid)) && 
+         firestore.get(/databases/(default)/documents/retailers/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+
+    // Publicly readable for product images, banners, logos, and promotional assets.
+    // Uploading, replacing, or deleting files is strictly reserved for administrators.
+    match /{allPaths=**} {
+      allow read: if true;
+      allow write, create, update, delete: if isAdmin();
+    }
+  }
+}

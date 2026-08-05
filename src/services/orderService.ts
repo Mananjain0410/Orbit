@@ -27,20 +27,25 @@ export const orderService = {
     const yearStr = date.getFullYear().toString();
     
     // Find the latest order in the current year to generate sequential ID
-    const q = query(
-      collection(db, 'orders'),
-      where('orderNumber', '>=', `ORD-${yearStr}-`),
-      where('orderNumber', '<', `ORD-${yearStr}-\uf8ff`),
-      orderBy('orderNumber', 'desc')
-    );
-    const qs = await getDocs(q);
     let sequenceNumber = 1;
-    if (!qs.empty) {
-      const latestOrderNumber = qs.docs[0].data().orderNumber as string;
-      const match = latestOrderNumber.match(/-(\d+)$/);
-      if (match) {
-        sequenceNumber = parseInt(match[1], 10) + 1;
+    try {
+      const q = query(
+        collection(db, 'orders'),
+        where('orderNumber', '>=', `ORD-${yearStr}-`),
+        where('orderNumber', '<', `ORD-${yearStr}-\uf8ff`),
+        orderBy('orderNumber', 'desc')
+      );
+      const qs = await getDocs(q);
+      if (!qs.empty) {
+        const latestOrderNumber = qs.docs[0].data().orderNumber as string;
+        const match = latestOrderNumber.match(/-(\d+)$/);
+        if (match) {
+          sequenceNumber = parseInt(match[1], 10) + 1;
+        }
       }
+    } catch (err) {
+      console.warn('Could not query latest order number, falling back to timestamp suffix', err);
+      sequenceNumber = Math.floor(Date.now() / 1000) % 100000;
     }
     const paddedSequence = sequenceNumber.toString().padStart(5, '0');
     const orderNumber = `ORD-${yearStr}-${paddedSequence}`;

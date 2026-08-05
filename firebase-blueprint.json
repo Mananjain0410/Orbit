@@ -1,0 +1,185 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "Wholesale product details",
+      "type": "object",
+      "properties": {
+        "patternNumber": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "categoryName": { "type": "string" },
+        "fabric": { "type": "string" },
+        "price": { "type": "number" },
+        "status": { "type": "string" }
+      },
+      "required": ["patternNumber", "price"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Product category",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "slug": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["name", "slug"]
+    },
+    "RetailerProfile": {
+      "title": "RetailerProfile",
+      "description": "Retailer user account profile",
+      "type": "object",
+      "properties": {
+        "ownerName": { "type": "string" },
+        "firmName": { "type": "string" },
+        "phone": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["ownerName", "firmName", "phone"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Retailer order record",
+      "type": "object",
+      "properties": {
+        "orderNumber": { "type": "string" },
+        "retailerId": { "type": "string" },
+        "status": { "type": "string" },
+        "fulfillmentStatus": { "type": "string" }
+      },
+      "required": ["orderNumber", "retailerId", "status"]
+    },
+    "SavedCart": {
+      "title": "SavedCart",
+      "description": "Saved cart or wishlist",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "retailerId": { "type": "string" }
+      },
+      "required": ["name", "retailerId"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "In-app notification",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" }
+      },
+      "required": ["userId", "title"]
+    },
+    "InventoryItem": {
+      "title": "InventoryItem",
+      "description": "Inventory stock tracking item",
+      "type": "object",
+      "properties": {
+        "productId": { "type": "string" },
+        "color": { "type": "string" },
+        "currentStock": { "type": "number" }
+      },
+      "required": ["productId", "color"]
+    },
+    "MediaItem": {
+      "title": "MediaItem",
+      "description": "Media library file metadata",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "url": { "type": "string" }
+      },
+      "required": ["name", "url"]
+    },
+    "MasterData": {
+      "title": "MasterData",
+      "description": "Master data entity for fabrics, colors, fits, lengths, sizes",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "isActive": { "type": "boolean" }
+      },
+      "required": ["name"]
+    },
+    "SystemSettings": {
+      "title": "SystemSettings",
+      "description": "Website content and settings",
+      "type": "object",
+      "properties": {
+        "contact": { "type": "object" },
+        "homepage": { "type": "object" }
+      }
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "System audit log entry",
+      "type": "object",
+      "properties": {
+        "action": { "type": "string" },
+        "adminEmail": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Collection of all products in the catalog"
+    },
+    "/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Collection of product categories"
+    },
+    "/retailers/{userId}": {
+      "schema": "RetailerProfile",
+      "description": "Retailer user profiles indexed by Auth UID"
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Wholesale orders placed by retailers"
+    },
+    "/savedCarts/{cartId}": {
+      "schema": "SavedCart",
+      "description": "Saved carts / wishlists belonging to retailers"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "Notifications for retailers and admins"
+    },
+    "/inventory/{itemId}": {
+      "schema": "InventoryItem",
+      "description": "Stock tracking per product color variant"
+    },
+    "/media/{mediaId}": {
+      "schema": "MediaItem",
+      "description": "Promotional media library items"
+    },
+    "/master_fabrics/{fabricId}": {
+      "schema": "MasterData",
+      "description": "Fabric master list"
+    },
+    "/master_colors/{colorId}": {
+      "schema": "MasterData",
+      "description": "Color master list"
+    },
+    "/master_fits/{fitId}": {
+      "schema": "MasterData",
+      "description": "Fit master list"
+    },
+    "/master_lengths/{lengthId}": {
+      "schema": "MasterData",
+      "description": "Length master list"
+    },
+    "/master_sizes/{sizeId}": {
+      "schema": "MasterData",
+      "description": "Size master list"
+    },
+    "/system/{document}": {
+      "schema": "SystemSettings",
+      "description": "System settings and business profile documents"
+    },
+    "/audit_logs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Admin action audit logs"
+    }
+  }
+}
