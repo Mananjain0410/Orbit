@@ -22,7 +22,7 @@ export function Cart() {
 
   const handleSaveCart = async () => {
     if (!retailer) {
-      showToast('Please log in as a retailer to save your cart', 'error');
+      showToast('Please log in to save your cart', 'error');
       return;
     }
     if (!cartName.trim()) {

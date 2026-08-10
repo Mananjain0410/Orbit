@@ -169,7 +169,7 @@ export function Home() {
               </span>
             )}
             <h2 className="font-serif text-3xl md:text-4xl">
-              {settings.storeInfo.whyChooseTitle || "Why Retailers Choose Us"}
+              {settings.storeInfo.whyChooseTitle || "Why Customers Choose Us"}
             </h2>
           </div>
           
@@ -253,10 +253,10 @@ export function Home() {
             {settings.storeInfo.ctaTitle || "Ready to upgrade your inventory?"}
           </h2>
           <p className="text-muted/70 mb-10 max-w-xl mx-auto font-light">
-            {settings.storeInfo.ctaSubtitle || "Join hundreds of premium retailers stocking quality wear. Register today to access exclusive wholesale pricing."}
+            {settings.storeInfo.ctaSubtitle || "Join hundreds of premium customers stocking quality wear. Register today to access exclusive wholesale pricing."}
           </p>
           <Link to={settings.storeInfo.ctaButtonLink || "/login"} className="bg-background text-foreground px-8 py-4 text-[11px] uppercase tracking-[1px] hover:bg-background/90 transition-colors font-medium">
-            {settings.storeInfo.ctaButtonText || "Create Retailer Account"}
+            {settings.storeInfo.ctaButtonText || "Create Account"}
           </Link>
         </section>
       )}

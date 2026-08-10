@@ -168,7 +168,7 @@ export function Checkout() {
           </div>
 
           <form id="order-form" onSubmit={handleSubmit} className="mt-8 border-t border-border pt-8">
-            <h3 className="text-[12px] font-bold uppercase tracking-[2px] mb-4">Retailer Notes (Optional)</h3>
+            <h3 className="text-[12px] font-bold uppercase tracking-[2px] mb-4">Notes (Optional)</h3>
             <p className="text-sm text-muted-foreground mb-4">Add any special instructions or requests for this order.</p>
             <textarea
               className="w-full min-h-[120px] p-4 border border-border bg-background focus:outline-none focus:border-foreground resize-y text-sm"

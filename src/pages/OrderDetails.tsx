@@ -213,7 +213,7 @@ export function OrderDetails() {
 
           {order.retailerNotes && (
             <div className="mt-8 border border-border p-6 bg-muted/10">
-              <h3 className="text-[10px] font-bold uppercase tracking-[2px] mb-2 text-muted-foreground">Retailer Notes</h3>
+              <h3 className="text-[10px] font-bold uppercase tracking-[2px] mb-2 text-muted-foreground">Notes</h3>
               <p className="text-sm">{order.retailerNotes}</p>
             </div>
           )}

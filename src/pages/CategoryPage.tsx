@@ -289,7 +289,7 @@ export function CategoryPage() {
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 md:py-16 min-h-[70vh] pt-24 md:pt-32">
       <SEO 
         title={`${category.name} - Wholesale Collection`} 
-        description={`Browse our premium collection of wholesale ${category.name.toLowerCase()} for retailers.`} 
+        description={`Browse our premium collection of wholesale ${category.name.toLowerCase()}.`} 
       />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 border-b border-border pb-6 gap-4">
         <div>

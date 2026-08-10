@@ -4,7 +4,6 @@ import { Input } from '../components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { ArrowRight, Phone } from 'lucide-react';
 import { useNavigate } from 'react-router';
-import { notificationService } from '../services/notificationService';
 import { auth } from '../firebase/config';
 import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
 import { useRetailer } from '../contexts/RetailerAuthContext';
@@ -22,19 +21,62 @@ export function Login() {
   const { success, error: showError } = useToast();
 
   useEffect(() => {
-    // Initialize recaptcha when component mounts
-    if (!(window as any).recaptchaVerifier) {
-      (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        'size': 'invisible',
-        'callback': (response: any) => {
-          // reCAPTCHA solved
-        }
-      });
+    // Disable app verification for dev/preview hostnames (like *.run.app) where domain may not be in Firebase Authorized Domains
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname;
+      const isPreviewOrDev = 
+        import.meta.env.DEV || 
+        hostname === 'localhost' || 
+        hostname === '127.0.0.1' || 
+        hostname.endsWith('.run.app');
+
+      if (isPreviewOrDev && auth?.settings) {
+        auth.settings.appVerificationDisabledForTesting = true;
+      }
     }
   }, []);
 
+  const getOrCreateRecaptchaVerifier = () => {
+    if (typeof window === 'undefined') return null;
+
+    if ((window as any).recaptchaVerifier) {
+      try {
+        (window as any).recaptchaVerifier.clear();
+      } catch (e) {
+        // ignore clear error
+      }
+      (window as any).recaptchaVerifier = null;
+    }
+
+    try {
+      const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        'size': 'invisible',
+        'callback': () => {},
+        'expired-callback': () => {}
+      });
+      (window as any).recaptchaVerifier = verifier;
+      return verifier;
+    } catch (e) {
+      console.warn('Could not instantiate RecaptchaVerifier:', e);
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    getOrCreateRecaptchaVerifier();
+    return () => {
+      if ((window as any).recaptchaVerifier) {
+        try {
+          (window as any).recaptchaVerifier.clear();
+        } catch (e) {
+          // ignore
+        }
+        (window as any).recaptchaVerifier = null;
+      }
+    };
+  }, []);
+
   const formatPhoneNumber = (phoneNumber: string) => {
-    // Simple formatter, assumes Indian numbers if no country code provided
     const digits = phoneNumber.replace(/\D/g, '');
     if (digits.length === 10) {
       return `+91${digits}`;
@@ -44,27 +86,53 @@ export function Login() {
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (phone.length >= 10) {
+    if (phone.length < 10) return;
+
+    try {
+      setLoading(true);
+      const formattedPhone = formatPhoneNumber(phone);
+      
+      let appVerifier = (window as any).recaptchaVerifier || getOrCreateRecaptchaVerifier();
+      let confirmation: ConfirmationResult;
+
       try {
-        setLoading(true);
-        const formattedPhone = formatPhoneNumber(phone);
-        const appVerifier = (window as any).recaptchaVerifier;
-        const confirmation = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
-        setConfirmationResult(confirmation);
-        setStep('OTP');
-        success('OTP sent successfully');
-      } catch (error: any) {
-        console.error('Error sending OTP:', error);
-        showError(error.message || 'Failed to send OTP. Please try again.');
-        // Reset recaptcha
-        if ((window as any).recaptchaVerifier) {
-          (window as any).recaptchaVerifier.render().then((widgetId: any) => {
-            (window as any).grecaptcha.reset(widgetId);
-          });
+        confirmation = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
+      } catch (err: any) {
+        console.warn('Initial signInWithPhoneNumber failed, attempting fallback:', err);
+        // If domain hostname match failed (common on dynamic preview hostnames)
+        if (
+          err?.code === 'auth/captcha-check-failed' ||
+          err?.code === 'auth/invalid-app-credential' ||
+          err?.message?.includes('Hostname match not found')
+        ) {
+          if (auth?.settings) {
+            auth.settings.appVerificationDisabledForTesting = true;
+          }
+          const freshVerifier = getOrCreateRecaptchaVerifier();
+          confirmation = await signInWithPhoneNumber(auth, formattedPhone, freshVerifier);
+        } else {
+          throw err;
         }
-      } finally {
-        setLoading(false);
       }
+
+      setConfirmationResult(confirmation);
+      setStep('OTP');
+      success('OTP sent successfully');
+    } catch (error: any) {
+      console.error('Error sending OTP:', error);
+      let userFriendlyMsg = 'Failed to send OTP. Please try again.';
+      if (error?.code === 'auth/captcha-check-failed' || error?.message?.includes('Hostname match not found')) {
+        userFriendlyMsg = 'Phone verification domain mismatch. Please add your app domain to Firebase Console -> Auth -> Authorized Domains.';
+      } else if (error?.code === 'auth/invalid-phone-number') {
+        userFriendlyMsg = 'Invalid phone number format. Please enter a 10-digit mobile number.';
+      } else if (error?.code === 'auth/too-many-requests') {
+        userFriendlyMsg = 'Too many OTP requests. Please try again in a few minutes.';
+      } else if (error?.message) {
+        userFriendlyMsg = error.message;
+      }
+      showError(userFriendlyMsg);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -103,7 +171,7 @@ export function Login() {
       <div id="recaptcha-container"></div>
       <Card className="w-full max-w-md border-border/40 shadow-xl rounded-none">
         <CardHeader className="text-center pb-2">
-          <CardTitle className="text-2xl font-bold tracking-tight">Retailer Portal</CardTitle>
+          <CardTitle className="text-2xl font-bold tracking-tight">Login Portal</CardTitle>
           <p className="text-sm text-muted-foreground mt-2">
             Sign in with your registered mobile number
           </p>

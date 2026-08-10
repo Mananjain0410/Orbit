@@ -112,7 +112,7 @@ export function Profile() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 min-h-[70vh] pt-24 md:pt-32">
-      <SEO title="Retailer Profile" />
+      <SEO title="Profile" />
       
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start w-full">
         {/* Sidebar */}
@@ -177,7 +177,7 @@ export function Profile() {
           {activeTab === 'profile' && (
             <div>
               <div className="flex justify-between items-center mb-8 border-b border-border pb-4">
-                <h2 className="font-serif text-3xl">Retailer Profile</h2>
+                <h2 className="font-serif text-3xl">Profile</h2>
                 <Button variant="outline" className="rounded-none text-[10px] uppercase tracking-[1px]">
                   <Edit className="w-3 h-3 mr-2" /> Edit
                 </Button>
