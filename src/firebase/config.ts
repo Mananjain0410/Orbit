@@ -23,7 +23,15 @@ const firebaseConfig = {
 // Initialize Firebase App
 export const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+
+const dbId = 
+  import.meta.env.VITE_FIREBASE_DATABASE_ID || 
+  firebaseConfigJson.firestoreDatabaseId;
+
+export const db = (dbId && dbId.trim() !== '' && dbId !== '(default)') 
+  ? getFirestore(app, dbId) 
+  : getFirestore(app);
+
 export const storage = getStorage(app);
 
 // Singleton instance for App Check
