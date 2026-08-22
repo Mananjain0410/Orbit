@@ -5,6 +5,10 @@ import { AppNotification } from '../types';
 export const notificationService = {
   // Subscribe to unread notifications count for a user (real-time)
   subscribeToUnreadCount(userId: string, callback: (count: number) => void) {
+    if (!userId) {
+      callback(0);
+      return () => {};
+    }
     const q = query(
       collection(db, 'notifications'),
       where('userId', '==', userId),
@@ -13,11 +17,18 @@ export const notificationService = {
     
     return onSnapshot(q, (snapshot) => {
       callback(snapshot.size);
+    }, (error) => {
+      console.warn('Error subscribing to unread count:', error);
+      callback(0);
     });
   },
 
   // Subscribe to all notifications for a user (real-time)
   subscribeToNotifications(userId: string, callback: (notifications: AppNotification[]) => void) {
+    if (!userId) {
+      callback([]);
+      return () => {};
+    }
     const q = query(
       collection(db, 'notifications'),
       where('userId', '==', userId),
@@ -31,6 +42,9 @@ export const notificationService = {
         ...doc.data()
       })) as AppNotification[];
       callback(notifications);
+    }, (error) => {
+      console.warn('Error subscribing to notifications:', error);
+      callback([]);
     });
   },
 

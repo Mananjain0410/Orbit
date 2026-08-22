@@ -250,14 +250,17 @@ function mergeSettings(data: any): AppSettings {
 
 export const settingsService = {
   async getSettings(): Promise<AppSettings> {
-    const docRef = doc(db, 'system', 'settings');
-    const snapshot = await getDoc(docRef);
-    if (!snapshot.exists()) {
-      const cleanDefaults = JSON.parse(JSON.stringify(defaultSettings));
-      await setDoc(docRef, cleanDefaults);
+    try {
+      const docRef = doc(db, 'system', 'settings');
+      const snapshot = await getDoc(docRef);
+      if (!snapshot.exists()) {
+        return defaultSettings;
+      }
+      return mergeSettings(snapshot.data());
+    } catch (err) {
+      console.warn('Error fetching settings:', err);
       return defaultSettings;
     }
-    return mergeSettings(snapshot.data());
   },
 
   subscribeToSettings(callback: (settings: AppSettings) => void) {
@@ -268,6 +271,9 @@ export const settingsService = {
       } else {
         callback(defaultSettings);
       }
+    }, (error) => {
+      console.warn('Error subscribing to settings:', error);
+      callback(defaultSettings);
     });
   },
 

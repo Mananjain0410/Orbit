@@ -28,6 +28,9 @@ export const categoryService = {
         });
         categories.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
         if (isSubscribed) callback(categories);
+      }, (error: any) => {
+        console.warn('Error subscribing to categories:', error);
+        if (isSubscribed) callback([]);
       });
     });
     

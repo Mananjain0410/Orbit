@@ -76,13 +76,17 @@ const DEFAULT_SIZES: Omit<MasterSize, 'id'>[] = [
 export const masterDataService = {
   // --- BUSINESS PROFILE ---
   async getBusinessProfile(): Promise<BusinessProfile> {
-    const docRef = doc(db, 'system', 'business_profile');
-    const snap = await getDoc(docRef);
-    if (!snap.exists()) {
-      await setDoc(docRef, defaultBusinessProfile);
+    try {
+      const docRef = doc(db, 'system', 'business_profile');
+      const snap = await getDoc(docRef);
+      if (!snap.exists()) {
+        return defaultBusinessProfile;
+      }
+      return { ...defaultBusinessProfile, ...snap.data() };
+    } catch (err) {
+      console.warn('Error fetching business profile:', err);
       return defaultBusinessProfile;
     }
-    return { ...defaultBusinessProfile, ...snap.data() };
   },
 
   subscribeBusinessProfile(callback: (profile: BusinessProfile) => void) {
@@ -93,6 +97,9 @@ export const masterDataService = {
       } else {
         callback(defaultBusinessProfile);
       }
+    }, (error) => {
+      console.warn('Error subscribing to business profile:', error);
+      callback(defaultBusinessProfile);
     });
   },
 
@@ -110,30 +117,31 @@ export const masterDataService = {
 
   // --- FABRICS ---
   async getFabrics(): Promise<MasterFabric[]> {
-    const colRef = collection(db, 'master_fabrics');
-    const snap = await getDocs(colRef);
-    if (snap.empty) {
-      // Seed default fabrics
-      const seeded: MasterFabric[] = [];
-      for (const item of DEFAULT_FABRICS) {
-        const docRes = await addDoc(colRef, item);
-        seeded.push({ id: docRes.id, ...item });
+    try {
+      const colRef = collection(db, 'master_fabrics');
+      const snap = await getDocs(colRef);
+      if (snap.empty) {
+        return DEFAULT_FABRICS.map((item, idx) => ({ id: `default_fab_${idx}`, ...item }));
       }
-      return seeded;
+      return snap.docs.map(d => ({ id: d.id, ...d.data() } as MasterFabric));
+    } catch (err) {
+      console.warn('Error fetching fabrics:', err);
+      return DEFAULT_FABRICS.map((item, idx) => ({ id: `default_fab_${idx}`, ...item }));
     }
-    return snap.docs.map(d => ({ id: d.id, ...d.data() } as MasterFabric));
   },
 
   subscribeFabrics(callback: (fabrics: MasterFabric[]) => void) {
     const colRef = collection(db, 'master_fabrics');
-    return onSnapshot(colRef, async (snap) => {
+    return onSnapshot(colRef, (snap) => {
       if (snap.empty) {
-        const seeded = await this.getFabrics();
-        callback(seeded);
+        callback(DEFAULT_FABRICS.map((item, idx) => ({ id: `default_fab_${idx}`, ...item })));
       } else {
         const items = snap.docs.map(d => ({ id: d.id, ...d.data() } as MasterFabric));
         callback(items);
       }
+    }, (error) => {
+      console.warn('Error subscribing to fabrics:', error);
+      callback(DEFAULT_FABRICS.map((item, idx) => ({ id: `default_fab_${idx}`, ...item })));
     });
   },
 
@@ -191,31 +199,33 @@ export const masterDataService = {
 
   // --- COLORS ---
   async getColors(): Promise<MasterColor[]> {
-    const colRef = collection(db, 'master_colors');
-    const snap = await getDocs(colRef);
-    if (snap.empty) {
-      const seeded: MasterColor[] = [];
-      for (const item of DEFAULT_COLORS) {
-        const docRes = await addDoc(colRef, item);
-        seeded.push({ id: docRes.id, ...item });
+    try {
+      const colRef = collection(db, 'master_colors');
+      const snap = await getDocs(colRef);
+      if (snap.empty) {
+        return DEFAULT_COLORS.map((item, idx) => ({ id: `default_col_${idx}`, ...item }));
       }
-      return seeded;
+      const items = snap.docs.map(d => ({ id: d.id, ...d.data() } as MasterColor));
+      return items.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+    } catch (err) {
+      console.warn('Error fetching colors:', err);
+      return DEFAULT_COLORS.map((item, idx) => ({ id: `default_col_${idx}`, ...item }));
     }
-    const items = snap.docs.map(d => ({ id: d.id, ...d.data() } as MasterColor));
-    return items.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
   },
 
   subscribeColors(callback: (colors: MasterColor[]) => void) {
     const colRef = collection(db, 'master_colors');
-    return onSnapshot(colRef, async (snap) => {
+    return onSnapshot(colRef, (snap) => {
       if (snap.empty) {
-        const seeded = await this.getColors();
-        callback(seeded);
+        callback(DEFAULT_COLORS.map((item, idx) => ({ id: `default_col_${idx}`, ...item })));
       } else {
         const items = snap.docs.map(d => ({ id: d.id, ...d.data() } as MasterColor));
         items.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
         callback(items);
       }
+    }, (error) => {
+      console.warn('Error subscribing to colors:', error);
+      callback(DEFAULT_COLORS.map((item, idx) => ({ id: `default_col_${idx}`, ...item })));
     });
   },
 
@@ -275,29 +285,31 @@ export const masterDataService = {
 
   // --- FITS ---
   async getFits(): Promise<MasterFit[]> {
-    const colRef = collection(db, 'master_fits');
-    const snap = await getDocs(colRef);
-    if (snap.empty) {
-      const seeded: MasterFit[] = [];
-      for (const item of DEFAULT_FITS) {
-        const docRes = await addDoc(colRef, item);
-        seeded.push({ id: docRes.id, ...item });
+    try {
+      const colRef = collection(db, 'master_fits');
+      const snap = await getDocs(colRef);
+      if (snap.empty) {
+        return DEFAULT_FITS.map((item, idx) => ({ id: `default_fit_${idx}`, ...item }));
       }
-      return seeded;
+      return snap.docs.map(d => ({ id: d.id, ...d.data() } as MasterFit));
+    } catch (err) {
+      console.warn('Error fetching fits:', err);
+      return DEFAULT_FITS.map((item, idx) => ({ id: `default_fit_${idx}`, ...item }));
     }
-    return snap.docs.map(d => ({ id: d.id, ...d.data() } as MasterFit));
   },
 
   subscribeFits(callback: (fits: MasterFit[]) => void) {
     const colRef = collection(db, 'master_fits');
-    return onSnapshot(colRef, async (snap) => {
+    return onSnapshot(colRef, (snap) => {
       if (snap.empty) {
-        const seeded = await this.getFits();
-        callback(seeded);
+        callback(DEFAULT_FITS.map((item, idx) => ({ id: `default_fit_${idx}`, ...item })));
       } else {
         const items = snap.docs.map(d => ({ id: d.id, ...d.data() } as MasterFit));
         callback(items);
       }
+    }, (error) => {
+      console.warn('Error subscribing to fits:', error);
+      callback(DEFAULT_FITS.map((item, idx) => ({ id: `default_fit_${idx}`, ...item })));
     });
   },
 
@@ -355,29 +367,31 @@ export const masterDataService = {
 
   // --- LENGTHS ---
   async getLengths(): Promise<MasterLength[]> {
-    const colRef = collection(db, 'master_lengths');
-    const snap = await getDocs(colRef);
-    if (snap.empty) {
-      const seeded: MasterLength[] = [];
-      for (const item of DEFAULT_LENGTHS) {
-        const docRes = await addDoc(colRef, item);
-        seeded.push({ id: docRes.id, ...item });
+    try {
+      const colRef = collection(db, 'master_lengths');
+      const snap = await getDocs(colRef);
+      if (snap.empty) {
+        return DEFAULT_LENGTHS.map((item, idx) => ({ id: `default_len_${idx}`, ...item }));
       }
-      return seeded;
+      return snap.docs.map(d => ({ id: d.id, ...d.data() } as MasterLength));
+    } catch (err) {
+      console.warn('Error fetching lengths:', err);
+      return DEFAULT_LENGTHS.map((item, idx) => ({ id: `default_len_${idx}`, ...item }));
     }
-    return snap.docs.map(d => ({ id: d.id, ...d.data() } as MasterLength));
   },
 
   subscribeLengths(callback: (lengths: MasterLength[]) => void) {
     const colRef = collection(db, 'master_lengths');
-    return onSnapshot(colRef, async (snap) => {
+    return onSnapshot(colRef, (snap) => {
       if (snap.empty) {
-        const seeded = await this.getLengths();
-        callback(seeded);
+        callback(DEFAULT_LENGTHS.map((item, idx) => ({ id: `default_len_${idx}`, ...item })));
       } else {
         const items = snap.docs.map(d => ({ id: d.id, ...d.data() } as MasterLength));
         callback(items);
       }
+    }, (error) => {
+      console.warn('Error subscribing to lengths:', error);
+      callback(DEFAULT_LENGTHS.map((item, idx) => ({ id: `default_len_${idx}`, ...item })));
     });
   },
 
@@ -435,31 +449,33 @@ export const masterDataService = {
 
   // --- SIZES ---
   async getSizes(): Promise<MasterSize[]> {
-    const colRef = collection(db, 'master_sizes');
-    const snap = await getDocs(colRef);
-    if (snap.empty) {
-      const seeded: MasterSize[] = [];
-      for (const item of DEFAULT_SIZES) {
-        const docRes = await addDoc(colRef, item);
-        seeded.push({ id: docRes.id, ...item });
+    try {
+      const colRef = collection(db, 'master_sizes');
+      const snap = await getDocs(colRef);
+      if (snap.empty) {
+        return DEFAULT_SIZES.map((item, idx) => ({ id: `default_sz_${idx}`, ...item }));
       }
-      return seeded;
+      const items = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) } as MasterSize));
+      return items.sort((a, b) => (a.displayOrder || 99) - (b.displayOrder || 99));
+    } catch (err) {
+      console.warn('Error fetching sizes:', err);
+      return DEFAULT_SIZES.map((item, idx) => ({ id: `default_sz_${idx}`, ...item }));
     }
-    const items = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) } as MasterSize));
-    return items.sort((a, b) => (a.displayOrder || 99) - (b.displayOrder || 99));
   },
 
   subscribeSizes(callback: (sizes: MasterSize[]) => void) {
     const colRef = collection(db, 'master_sizes');
-    return onSnapshot(colRef, async (snap) => {
+    return onSnapshot(colRef, (snap) => {
       if (snap.empty) {
-        const seeded = await this.getSizes();
-        callback(seeded);
+        callback(DEFAULT_SIZES.map((item, idx) => ({ id: `default_sz_${idx}`, ...item })));
       } else {
         const items = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) } as MasterSize));
         items.sort((a, b) => (a.displayOrder || 99) - (b.displayOrder || 99));
         callback(items);
       }
+    }, (error) => {
+      console.warn('Error subscribing to sizes:', error);
+      callback(DEFAULT_SIZES.map((item, idx) => ({ id: `default_sz_${idx}`, ...item })));
     });
   },
 

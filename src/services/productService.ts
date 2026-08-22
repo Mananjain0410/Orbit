@@ -22,6 +22,9 @@ export const productService = {
         
         products.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
         if (isSubscribed) callback(products);
+      }, (error) => {
+        console.warn('Error subscribing to products:', error);
+        if (isSubscribed) callback([]);
       });
     });
     

@@ -92,12 +92,15 @@ export const retailerService = {
         if (isSubscribed) {
           callback(snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as RetailerProfile)));
         }
+      }, (error) => {
+        console.warn('Error subscribing to retailers:', error);
+        if (isSubscribed) callback([]);
       });
     });
     
     return () => {
       isSubscribed = false;
-      unsubscribe.then(unsub => unsub());
+      unsubscribe.then(unsub => unsub && unsub());
     };
   },
 

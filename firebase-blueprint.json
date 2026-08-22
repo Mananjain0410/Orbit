@@ -118,9 +118,23 @@
         "action": { "type": "string" },
         "adminEmail": { "type": "string" }
       }
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "Administrator account document",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "role": { "type": "string" }
+      },
+      "required": ["email"]
     }
   },
   "firestore": {
+    "/admins/{adminId}": {
+      "schema": "Admin",
+      "description": "Administrator credentials and privilege records"
+    },
     "/products/{productId}": {
       "schema": "Product",
       "description": "Collection of all products in the catalog"

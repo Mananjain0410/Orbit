@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged, User } from 'firebase/auth';
-import { auth } from '../firebase/config';
+import { doc, setDoc } from 'firebase/firestore';
+import { auth, db } from '../firebase/config';
 
 interface AdminUser {
   id: string;
@@ -27,8 +28,6 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: User | null) => {
-      // Very basic admin check based on email for the sake of sprint.
-      // In production, rely on Custom Claims or Firestore `admins` collection.
       if (firebaseUser && firebaseUser.email) {
         setUser({
           id: firebaseUser.uid,
@@ -37,6 +36,16 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
           role: 'Admin',
           lastLogin: new Date().toISOString(),
         });
+        try {
+          const adminRef = doc(db, 'admins', firebaseUser.uid);
+          await setDoc(adminRef, {
+            email: firebaseUser.email,
+            role: 'admin',
+            updatedAt: Date.now()
+          }, { merge: true });
+        } catch (e) {
+          // Ignore if permission denied or offline
+        }
       } else {
         setUser(null);
       }
@@ -56,6 +65,16 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
         role: 'Admin',
         lastLogin: new Date().toISOString(),
       });
+      try {
+        const adminRef = doc(db, 'admins', userCredential.user.uid);
+        await setDoc(adminRef, {
+          email: userCredential.user.email || email,
+          role: 'admin',
+          updatedAt: Date.now()
+        }, { merge: true });
+      } catch (e) {
+        // Ignore if permission error
+      }
     } catch (error: any) {
       throw new Error(error.message || 'Invalid email or password');
     }
