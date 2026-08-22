@@ -1,29 +1,39 @@
 # Application Routing
 
-The application uses React Router v7.
+The application uses React Router v8.
 
 ## Retailer Routes
 | Path | Component | Description |
 |---|---|---|
-| `/` | `Home` | Homepage with hero banner and categories. |
-| `/login` | `Login` | Mock OTP login screen. |
-| `/category/:slug` | `CategoryView` | Displays products filtered by a category. |
-| `/product/:id` | `ProductPage` | Individual product details, color selection, and "add to cart". |
-| `/cart` | `Cart` | Review selected items and proceed to checkout. |
+| `/` | `Home` | Homepage featuring banners, category grids, and featured items. |
+| `/login` | `Login` | Firebase Phone Authentication OTP login screen. |
+| `/register` | `Register` | Retailer business onboarding form (instant active status). |
+| `/category/:slug` | `CategoryPage` | Products filtered by category. |
+| `/product/:id` | `ProductPage` | Detailed product view with size/color matrix and add-to-cart. |
+| `/cart` | `Cart` | Review selected items, quantities, and proceed to checkout. |
 | `/checkout` | `Checkout` | Finalize order request details and submit. |
-| `/profile` | `Profile` | Retailer business details and order history tab. |
-| `/order/:id` | `OrderDetails` | View specific order details, timeline, and reorder. |
+| `/order-confirmation/:id` | `OrderConfirmation` | Order submission receipt. |
+| `/profile` | `Profile` | Retailer business profile and order history tab. |
+| `/order/:id` | `OrderDetails` | Individual order details, fulfillment status, and quick reorder. |
 
 ## Admin Routes (Business Portal)
-All admin routes are nested under `/admin` and use a dedicated `AdminLayout` wrapper.
+All admin routes are nested under `/admin` and wrapped in `AdminLayout`.
 
 | Path | Component | Description |
 |---|---|---|
-| `/admin` | `AdminDashboard` | High-level metrics (orders today, pending approvals, revenue). |
-| `/admin/orders` | `AdminOrders` | List of all wholesale orders with status filters and Excel export. |
-| `/admin/orders/:id` | `AdminOrderDetails` | Order workspace: update status, fulfillment, notes, and print. |
-| `/admin/inventory` | `AdminInventory` | Manage stock levels and view low stock items. |
-| `/admin/retailers` | `AdminRetailers` | Manage approved and pending retailer accounts. |
-| `/admin/products` | `AdminProducts` | View and edit catalog products (patterns/fabrics). |
+| `/admin/login` | `AdminLogin` | Administrator email/password authentication. |
+| `/admin/dashboard` | `AdminDashboard` | High-level metrics, pending orders count, and quick stats. |
+| `/admin/orders` | `AdminOrders` | Wholesale order management with status filtering and Excel export. |
+| `/admin/orders/:id` | `AdminOrderDetails` | Order workspace: update status, fulfillment, notes, and packing slip. |
+| `/admin/inventory` | `AdminInventory` | Manage stock levels and color-wise inventory matrix. |
+| `/admin/retailers` | `AdminRetailers` | View registered retailer profiles and status. |
+| `/admin/retailers/:id` | `AdminRetailerProfile` | Individual retailer profile, contact info, and past order history. |
+| `/admin/products` | `AdminProducts` | View and edit catalog products. |
+| `/admin/products/:id/edit` | `AdminProductEdit` | Product editor for sizes, colors, pricing, and images. |
 | `/admin/categories` | `AdminCategories` | Manage catalog categories. |
-| `/admin/settings` | `AdminSettings` | Global configuration (contact info, homepage text, low stock limits). |
+| `/admin/content` | `AdminContent` | Dynamic homepage and header content management. |
+| `/admin/master-data` | `AdminMasterData` | Manage master colors, fabrics, fits, lengths, and sizes. |
+| `/admin/business-profile` | `AdminBusinessProfile` | Manage business contact details, GST, and branding. |
+| `/admin/promotions` | `AdminPromotions` | Manage promotional banners and popups. |
+| `/admin/media` | `AdminMediaLibrary` | Centralized media library and image uploads. |
+| `/admin/settings` | `AdminSettings` | Global system settings and inventory thresholds. |

@@ -1,56 +1,51 @@
 # Complete Testing Checklist
 
 ## Retailer Workflow
-- [ ] **Authentication**
-  - [ ] Can enter phone number and receive mock OTP.
-  - [ ] Entering `123456` OTP successfully logs in and triggers Admin notification.
-  - [ ] Logout works correctly and clears context.
+- [ ] **Authentication & Onboarding**
+  - [ ] Can enter phone number and receive OTP via Firebase Phone Authentication.
+  - [ ] Valid OTP logs in user and redirects to registration if new user, or home if existing.
+  - [ ] Completing registration instantly creates an active profile without requiring admin approval.
+  - [ ] Logout works correctly and clears session context.
 - [ ] **Catalog & Discovery**
-  - [ ] Homepage banner images rotate automatically.
-  - [ ] Product categories display correctly.
-  - [ ] Product search and filtering (by category) works on the catalog page.
-  - [ ] Product detail page displays images, pricing, and available colors/stock.
+  - [ ] Homepage hero banners and categories load dynamically.
+  - [ ] Product categories filter catalog items correctly.
+  - [ ] Product detail page displays accurate pricing, size matrix, and color stock options.
 - [ ] **Cart & Ordering**
-  - [ ] Adding products to cart correctly updates global cart state.
-  - [ ] Minimum order quantity validation works.
-  - [ ] Cart page calculates estimated value and total sets correctly.
-  - [ ] "Proceed to Request" generates an order.
-  - [ ] Submitting an order triggers a notification to Admin.
-- [ ] **Order History & Profile**
-  - [ ] Profile page displays business details correctly.
-  - [ ] "Order History" lists all past orders.
-  - [ ] Order details page displays items and timeline accurately.
-  - [ ] "Reorder" functionality successfully adds available items back to cart.
-  - [ ] Retailer can cancel an order when it is in "Pending" status.
+  - [ ] Adding color selections to cart updates global cart state and localStorage.
+  - [ ] Cart page calculates total sets and estimated order value.
+  - [ ] Checkout submits order directly to Firestore `orders` collection.
+  - [ ] Order confirmation page displays receipt details upon completion.
+- [ ] **Order History & Reordering**
+  - [ ] Profile page shows active retailer business details and order history.
+  - [ ] Order details page displays status timeline, items breakdown, and fulfillment tracking.
+  - [ ] "Reorder" button re-populates cart with available items.
 
 ## Business Portal (Admin Workflow)
-- [ ] **Order Management**
-  - [ ] Admin can view all orders.
-  - [ ] Filters (All, Reserved, Available) sort orders correctly based on inventory impact.
-  - [ ] "Export to Excel" generates a downloadable file.
-  - [ ] Order details page displays full breakdown, notes, and timeline.
-- [ ] **Order Lifecycle & State Transitions**
-  - [ ] Admin can change `OrderStatus` (Pending -> Confirmed -> On Hold -> Rejected/Cancelled).
-  - [ ] Terminal states (Cancelled, Rejected) disable further `OrderStatus` changes.
-  - [ ] Admin can change `FulfillmentStatus` (Not Started -> Picking -> Packed -> Ready for Dispatch -> Dispatched -> Delivered).
-  - [ ] Changing `FulfillmentStatus` to "Packed" deducts inventory (unless already deducted).
-  - [ ] Changing `OrderStatus` to "Cancelled" auto-restores inventory if it was previously deducted.
-  - [ ] Terminal states disable further `FulfillmentStatus` changes.
-  - [ ] Notifications are sent to the Retailer when order or fulfillment status changes.
-- [ ] **Inventory Management**
-  - [ ] Inventory dashboard correctly lists products and stock per color.
-  - [ ] Low stock alert triggers when a deduction drops stock below the global threshold.
-- [ ] **Global Settings**
-  - [ ] Admin can update Business Profile, Website Settings, and Inventory Rules in the Settings dashboard.
-  - [ ] Homepage and Footer text dynamically reflect the values from `SettingsContext`.
+- [ ] **Authentication & Security**
+  - [ ] Administrator login using email and password.
+  - [ ] Protected admin routes redirect unauthenticated visitors.
+  - [ ] Firestore and Storage security rules enforce UID/admin authorization.
+- [ ] **Order Management & Fulfillment**
+  - [ ] Admin dashboard displays order metrics and recent activity.
+  - [ ] Orders list allows filtering by status (Pending, Confirmed, On Hold, Rejected, Cancelled).
+  - [ ] Order details view allows changing Order Status and Fulfillment Status.
+  - [ ] Changing order status to Confirmed/Packed updates inventory deductions cleanly.
+  - [ ] Printable order invoice and packing sheet render formatted print view.
+  - [ ] Excel export downloads order records.
+- [ ] **Inventory & Catalog Management**
+  - [ ] Inventory matrix displays stock levels across product color variants.
+  - [ ] Stock adjustments update real-time Firestore records.
+  - [ ] Product CRUD allows managing pattern numbers, prices, sizes, and images.
+  - [ ] Category CRUD updates category listings across retailer app.
+  - [ ] Master Data CRUD manages colors, fabrics, fits, lengths, and sizes.
+- [ ] **Content & Business Profile**
+  - [ ] Business Profile updates company contact info, GST, and brand details.
+  - [ ] Website Content and Promotions allow managing hero banners and dynamic text.
+  - [ ] Centralized Media Library handles asset uploads to Firebase Storage.
 
-## Cross-cutting Concerns
-- [ ] **Notifications**
-  - [ ] Notification bell displays unread count.
-  - [ ] Clicking notification bell marks unread notifications as read.
-- [ ] **Performance**
-  - [ ] Image loading is optimized.
-  - [ ] Components load without excessive re-renders.
-- [ ] **Security**
-  - [ ] Route protection redirects unauthenticated users.
-  - [ ] Mock Firestore rules restrict access based on roles.
+## System & App Integration
+- [ ] **App Check & Infrastructure**
+  - [ ] Firebase App Check initializes with reCAPTCHA Enterprise provider.
+  - [ ] Firestore Security Rules enforce deny-by-default with strict role permissions.
+  - [ ] Storage Security Rules restrict write operations to authenticated admins.
+  - [ ] Production build (`npm run build`) completes with zero errors or broken imports.

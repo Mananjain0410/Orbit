@@ -10,7 +10,7 @@ export interface RetailerProfile {
   address?: string;
   city: string;
   state: string;
-  status: 'active' | 'pending' | 'suspended';
+  status: 'active' | 'suspended';
   createdAt: any;
   updatedAt: any;
 }
@@ -55,7 +55,7 @@ export const retailerService = {
       const docRef = doc(db, 'retailers', uid);
       const newRetailer = {
         ...data,
-        status: 'pending',
+        status: 'active',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
@@ -69,7 +69,7 @@ export const retailerService = {
     }
   },
 
-  async updateRetailerStatus(uid: string, status: 'active' | 'pending' | 'suspended'): Promise<void> {
+  async updateRetailerStatus(uid: string, status: 'active' | 'suspended'): Promise<void> {
     try {
       const docRef = doc(db, 'retailers', uid);
       await updateDoc(docRef, { 

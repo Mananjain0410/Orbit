@@ -104,7 +104,7 @@ export default function App() {
                       <Route path="business-profile" element={<AdminBusinessProfile />} />
                       <Route path="promotions" element={<AdminPromotions />} />
                       <Route path="media" element={<AdminMediaLibrary />} />
-                      <Route path="reports" element={<div className="p-8"><h1 className="text-2xl font-semibold">Reports</h1><p className="text-neutral-500 mt-2">Coming in Phase 2</p></div>} />
+                      <Route path="reports" element={<div className="p-8"><h1 className="text-2xl font-semibold">Reports</h1><p className="text-neutral-500 mt-2">Analytics and exports workspace.</p></div>} />
                       <Route path="settings" element={<AdminSettings />} />
                     </Route>
                   </Routes>

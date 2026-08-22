@@ -12,7 +12,7 @@ const RecentViewContext = createContext<RecentViewContextType | undefined>(undef
 export function RecentViewProvider({ children }: { children: React.ReactNode }) {
   const [recentIds, setRecentIds] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem('b2b_recent') || localStorage.getItem('mnfr_recent');
+      const saved = localStorage.getItem('b2b_recent');
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];

@@ -36,7 +36,6 @@ export function AdminRetailers() {
 
   const getStatusBadge = (status: string) => {
     if (status === 'active') return <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">Active</span>;
-    if (status === 'pending') return <span className="px-2 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">Pending</span>;
     if (status === 'suspended') return <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-full">Blocked</span>;
     return null;
   };
@@ -68,7 +67,6 @@ export function AdminRetailers() {
           >
             <option value="all">All Statuses</option>
             <option value="active">Active</option>
-            <option value="pending">Pending</option>
             <option value="suspended">Blocked</option>
           </select>
         </div>

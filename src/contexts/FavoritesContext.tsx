@@ -14,7 +14,7 @@ const FavoritesContext = createContext<FavoritesContextType | undefined>(undefin
 export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   const [favoriteIds, setFavoriteIds] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem('b2b_favorites') || localStorage.getItem('mnfr_favorites');
+      const saved = localStorage.getItem('b2b_favorites');
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];

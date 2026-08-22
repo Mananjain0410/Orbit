@@ -11,7 +11,7 @@ export interface User {
   role: Role;
   createdAt: number;
   updatedAt: number;
-  status: 'active' | 'pending' | 'suspended';
+  status: 'active' | 'suspended';
 }
 
 export type Retailer = User;

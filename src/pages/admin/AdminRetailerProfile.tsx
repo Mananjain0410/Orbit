@@ -12,7 +12,7 @@ import { useToast } from '../../components/ui/Toast';
 export function AdminRetailerProfile() {
   const { id } = useParams();
   const [retailer, setRetailer] = useState<RetailerProfile | null>(null);
-  const [status, setStatus] = useState<'active' | 'pending' | 'suspended'>('active');
+  const [status, setStatus] = useState<'active' | 'suspended'>('active');
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const { showToast } = useToast();
@@ -43,7 +43,7 @@ export function AdminRetailerProfile() {
     return <div className="p-8 text-center">Retailer not found.</div>;
   }
 
-  const handleStatusChange = async (newStatus: 'active' | 'pending' | 'suspended') => {
+  const handleStatusChange = async (newStatus: 'active' | 'suspended') => {
     if (!id) return;
     try {
       await retailerService.updateRetailerStatus(id, newStatus);
@@ -58,7 +58,6 @@ export function AdminRetailerProfile() {
 
   const getStatusBadge = (s: string) => {
     if (s === 'active') return <span className="px-3 py-1 bg-green-100 text-green-700 text-sm font-medium rounded-full">Active</span>;
-    if (s === 'pending') return <span className="px-3 py-1 bg-amber-100 text-amber-700 text-sm font-medium rounded-full">Pending</span>;
     if (s === 'suspended') return <span className="px-3 py-1 bg-red-100 text-red-700 text-sm font-medium rounded-full">Blocked</span>;
     return null;
   };
@@ -90,7 +89,6 @@ export function AdminRetailerProfile() {
               onChange={(e) => handleStatusChange(e.target.value as any)}
             >
               <option value="active">Active</option>
-              <option value="pending">Pending</option>
               <option value="suspended">Blocked</option>
             </select>
             <Button

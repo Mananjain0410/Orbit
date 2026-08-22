@@ -15,13 +15,6 @@ service cloud.firestore {
 
     function isAdmin() {
       return isSignedIn() && (
-        (request.auth.token.email != null && (
-          request.auth.token.email.matches('.*@mnfr\\.in$') ||
-          request.auth.token.email.matches('.*admin.*') ||
-          request.auth.token.email == 'mananjain0410@gmail.com' ||
-          request.auth.token.email == 'admin@wholesale.com' ||
-          request.auth.token.email == 'admin@portal.com'
-        )) ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
         (exists(/databases/$(database)/documents/retailers/$(request.auth.uid)) && 
          get(/databases/$(database)/documents/retailers/$(request.auth.uid)).data.get('role', 'retailer') == 'admin')
@@ -99,7 +92,7 @@ service cloud.firestore {
       allow create: if isRetailer(userId) || isAdmin();
       allow update: if isAdmin() || (
         isRetailer(userId) && 
-        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'role']))
+        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']))
       );
       allow delete: if isAdmin();
     }
@@ -107,7 +100,7 @@ service cloud.firestore {
     // Orders Collection - Retailers manage their own orders; admins manage all orders
     match /orders/{orderId} {
       allow get: if isAdmin() || (isSignedIn() && resource.data.retailerId == request.auth.uid);
-      allow list: if isAdmin() || isSignedIn();
+      allow list: if isAdmin() || (isSignedIn() && resource.data.retailerId == request.auth.uid);
       allow create: if isAdmin() || (isSignedIn() && request.resource.data.retailerId == request.auth.uid);
       allow update, delete: if isAdmin();
     }
@@ -115,7 +108,7 @@ service cloud.firestore {
     // Saved Carts & Wishlists Collection - Retailers manage their own saved carts
     match /savedCarts/{cartId} {
       allow get: if isAdmin() || (isSignedIn() && resource.data.retailerId == request.auth.uid);
-      allow list: if isAdmin() || isSignedIn();
+      allow list: if isAdmin() || (isSignedIn() && resource.data.retailerId == request.auth.uid);
       allow create: if isAdmin() || (isSignedIn() && request.resource.data.retailerId == request.auth.uid);
       allow update: if isAdmin() || (
         isSignedIn() && 
@@ -128,10 +121,10 @@ service cloud.firestore {
     // Notifications Collection - User specific notifications
     match /notifications/{notificationId} {
       allow get: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      allow list: if isAdmin() || isSignedIn();
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
       allow create: if isSignedIn();
       allow update: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
     }
 
     // Audit Logs Collection - Admin Only
@@ -141,7 +134,9 @@ service cloud.firestore {
 
     // Admins Collection - Admin Only
     match /admins/{adminId} {
-      allow read, write: if isAdmin();
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && (request.auth.uid == adminId || isAdmin());
+      allow delete: if isAdmin();
     }
   }
 }

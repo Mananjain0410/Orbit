@@ -1,42 +1,48 @@
 # System Architecture
 
 ## Overview
-MNFR Wholesale is a B2B ordering platform built using React and TypeScript. It uses Vite as the bundler and Tailwind CSS for styling. The application is divided into two primary interfaces:
-1. **Retailer App (Frontend):** For wholesale buyers to browse catalogs and place orders.
-2. **Business Portal (Admin):** For the MNFR operations team to manage inventory, process orders, and handle dispatch.
+The Wholesale Ordering Platform is a full-stack B2B ordering and management solution built with React and TypeScript. It uses Vite as the bundler and Tailwind CSS for styling, backed directly by Firebase (Authentication, App Check, Firestore, and Storage).
+
+The application consists of two primary interfaces:
+1. **Retailer App (Frontend):** For wholesale buyers to authenticate via real Phone OTP, browse catalog offerings, add items to cart, and place orders with instant account activation upon registration.
+2. **Business Portal (Admin):** For administrators to manage inventory, update product/category master data, process and fulfill orders, and customize business branding.
 
 ## Tech Stack
-- **Framework:** React 18
+- **Framework:** React 19
 - **Language:** TypeScript
 - **Bundler:** Vite
-- **Styling:** Tailwind CSS
-- **Routing:** React Router v7
+- **Styling:** Tailwind CSS v4
+- **Routing:** React Router v8
 - **Icons:** Lucide React
-- **Backend/DB:** Firebase Firestore (currently simulated with services)
+- **Backend / Services:**
+  - **Firebase Authentication:** Phone OTP for Retailers, Email/Password for Admins
+  - **Firebase App Check:** reCAPTCHA Enterprise protection
+  - **Cloud Firestore:** Real-time database (Default instance)
+  - **Cloud Storage:** Media and product asset storage
 
 ## Folder Structure
-- `/src/components/`: Reusable UI elements, layout components (Header, Footer), and domain-specific pieces (product cards, order rows).
-- `/src/pages/`: Full route components representing individual screens for both Retailer and Admin apps.
-- `/src/contexts/`: React Context providers for global state (Cart, Auth, Settings).
-- `/src/services/`: Abstraction layer for data operations (Order, Inventory, Settings, Notifications).
-- `/src/lib/`: Utilities and dummy data.
-- `/src/types/`: TypeScript interfaces shared across the application.
+- `/src/components/`: Reusable UI elements, layout components (Header, Footer, AdminSidebar), and domain components (ProductCard, StatusBadge).
+- `/src/pages/`: Route components for Retailer and Admin views.
+- `/src/contexts/`: React Context providers for global state (StoreContext, CartContext, RetailerAuthContext, AdminAuthContext, SettingsContext, MasterDataContext).
+- `/src/services/`: Direct Firebase service layer (`orderService`, `inventoryService`, `retailerService`, `productService`, `settingsService`, `mediaService`, `auditLogService`).
+- `/src/firebase/`: Centralized Firebase configuration (`config.ts`).
+- `/src/types/`: Shared TypeScript interfaces and domain types.
 
 ## Key Design Patterns
-- **Service Layer:** All data mutations (orders, inventory, notifications) pass through dedicated services (`orderService`, `inventoryService`, etc.) to separate business logic from UI components.
-- **Context API:** Used for cross-cutting concerns like Authentication, Cart management, and Global Settings.
-- **Optimistic UI & Toasts:** User actions provide immediate feedback via toast notifications.
+- **Service Layer:** Data queries and mutations pass through modular service abstractions backed by Firestore collections.
+- **Context API:** Manages global state including active session auth, store catalog, master attributes, and global cart/favorites.
+- **Immediate Retailer Activation:** Newly registered retailers complete business onboarding and immediately gain access to catalog browsing and order placement.
+- **UID-Based Authorization:** Firestore and Storage security rules enforce strict UID-based data access for retailers and explicit admin authorization for platform operations.
 
-## Data Models (Firestore Collections)
-### `orders`
-- **Fields:** `id`, `orderNumber`, `retailerId`, `items`, `status`, `fulfillmentStatus`, `statusHistory`, `internalNotes`, `createdAt`, `updatedAt`
-- **Purpose:** Tracks wholesale requests and their lifecycle.
-
-### `notifications`
-- **Fields:** `id`, `userId`, `title`, `message`, `type`, `read`, `link`, `createdAt`
-- **Purpose:** In-app alert system for order status changes, stock alerts, and new registrations.
-
-### `system` (Settings)
-- **Document:** `settings`
-- **Fields:** `contact`, `social`, `storeInfo`, `inventory`
-- **Purpose:** Global configuration and customizable text for the application.
+## Firestore Collections
+- `products`: Catalog items, pattern numbers, pricing, sizes, and color selections.
+- `categories`: Product categories, display images, and display ordering.
+- `retailers`: Registered retailer profiles with owner, firm, location, and active status.
+- `orders`: Wholesale order lifecycle records, status history, and items matrix.
+- `savedCarts`: Persistent retailer carts and wishlists.
+- `inventory`: Per-color stock availability, reserved stock, and stock levels.
+- `master_colors`, `master_fabrics`, `master_fits`, `master_lengths`, `master_sizes`: Master attribute collections.
+- `system`: App settings, business profile details, and website copy.
+- `media`: Centralized media library records.
+- `admins`: Admin user collection for platform authorization.
+- `audit_logs`: Audit log entries for administrative operations.
